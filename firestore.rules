@@ -1,0 +1,75 @@
+rules_version = '2';
+
+// Sicherheitsregeln «Grizzlys-Absenzen».
+// Einfügen in: Firebase-Konsole → Firestore → Regeln → veröffentlichen.
+//
+// Prinzip:
+//  - Zugriff nur für freigeschaltete Konten (Dokument in `trainer/{email}` vorhanden).
+//  - AHV-Nr./PEID liegen in `personenVertraulich` und sind NUR für Master lesbar.
+//  - Termine/Anwesenheiten schreiben darf nur, wer der Gruppe zugeteilt ist (oder Master).
+//
+// Einmalige Ersteinrichtung (Bootstrap): das erste Master-Konto von Hand anlegen —
+// Firestore → Daten → Sammlung `trainer` → Dokument-ID = eigene Google-Mailadresse
+// (kleingeschrieben), Feld `rolle` = "master".
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function angemeldet() {
+      // email_verified ist Pflicht: Bei Google immer erfüllt; bei E-Mail/Passwort-
+      // Konten erst nach Bestätigungslink. Verhindert, dass sich jemand mit einer
+      // fremden (Trainer-)Mailadresse registriert und deren Rechte erbt.
+      return request.auth != null
+        && request.auth.token.email != null
+        && request.auth.token.email_verified == true;
+    }
+    function mail() {
+      return request.auth.token.email.lower();
+    }
+    function istTrainer() {
+      return angemeldet() && exists(/databases/$(database)/documents/trainer/$(mail()));
+    }
+    function istMaster() {
+      return angemeldet()
+        && get(/databases/$(database)/documents/trainer/$(mail())).data.rolle == 'master';
+    }
+    function darfGruppe(gruppeId) {
+      return istMaster()
+        || mail() in get(/databases/$(database)/documents/gruppen/$(gruppeId)).data.get('trainerEmails', []);
+    }
+
+    match /trainer/{email} {
+      allow read: if istTrainer();
+      allow write: if istMaster();
+    }
+
+    match /personen/{id} {
+      // Trainer dürfen Personen sehen und erfassen/ergänzen; löschen nur Master.
+      allow read, create, update: if istTrainer();
+      allow delete: if istMaster();
+    }
+
+    match /personenVertraulich/{id} {
+      allow read, write: if istMaster();
+    }
+
+    match /gruppen/{gruppeId} {
+      allow read: if istTrainer();
+      allow create, delete: if istMaster();
+      // Zugeteilte Trainer dürfen die Gruppe pflegen (Mitglieder, iCal-Quellen),
+      // aber die Trainer-Zuteilung selbst ändert nur der Master.
+      allow update: if istMaster()
+        || (darfGruppe(gruppeId)
+            && request.resource.data.get('trainerEmails', []) == resource.data.get('trainerEmails', []));
+
+      match /aktivitaeten/{aktivitaetId} {
+        allow write: if darfGruppe(gruppeId);
+      }
+    }
+
+    // Lesezugriff auf alle Aktivitäten (auch via collectionGroup-Abfrage).
+    match /{pfad=**}/aktivitaeten/{aktivitaetId} {
+      allow read: if istTrainer();
+    }
+  }
+}

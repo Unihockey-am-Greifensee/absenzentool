@@ -1,0 +1,248 @@
+import { useState } from 'react'
+import type { AppState, Aktivitaet, Aktivitaetstyp, Funktion } from '../types'
+import { neueId } from '../types'
+import { Seite, useBenutzer, type Update } from '../App'
+import { heute } from './Gruppen'
+import { DAUER_TRAINING, DAUER_TRAININGSTAG } from '../lib/ndsExport'
+import { KalenderSektion } from './IcalSync'
+
+const WOCHENTAGE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+
+export function chDatumKurz(iso: string): string {
+  const [j, m, t] = iso.split('-')
+  const wt = WOCHENTAGE[new Date(Number(j), Number(m) - 1, Number(t)).getDay()]
+  return `${wt} ${t}.${m}.${j.slice(2)}`
+}
+
+export function GruppeDetail({ state, update, gruppeId }: { state: AppState; update: Update; gruppeId: string }) {
+  const gruppe = state.gruppen.find(g => g.id === gruppeId)
+  const [zeigeNeu, setZeigeNeu] = useState(false)
+  if (!gruppe) return <Seite titel="Gruppe nicht gefunden" zurueck="" tab="gruppen"><div className="leer">Diese Gruppe existiert nicht (mehr).</div></Seite>
+
+  const sortiert = [...gruppe.aktivitaeten].sort((a, b) => b.datum.localeCompare(a.datum) || (b.zeit ?? '').localeCompare(a.zeit ?? ''))
+  const personById = new Map(state.personen.map(p => [p.id, p]))
+
+  return (
+    <Seite titel={gruppe.name} zurueck="" tab="gruppen">
+      <div className="btnreihe">
+        <button className="breit" onClick={() => setZeigeNeu(v => !v)}>{zeigeNeu ? 'Formular schliessen' : '+ Termine hinzufügen'}</button>
+      </div>
+      {zeigeNeu && <NeueTermine gruppe={gruppe.id} state={state} update={update} fertig={() => setZeigeNeu(false)} />}
+
+      <KalenderSektion state={state} update={update} gruppeId={gruppe.id} />
+      <TrainerZuteilung state={state} update={update} gruppeId={gruppe.id} />
+
+      <h2 className="abschnitt">Termine</h2>
+      {sortiert.length === 0 && <div className="leer">Noch keine Termine. Lege oben Trainings an — einzeln oder als Wochenserie.</div>}
+      <div className="karte" style={{ padding: '0.2rem 1rem' }}>
+        {sortiert.map(a => {
+          const anwesend = Object.values(a.anwesenheit).filter(Boolean).length
+          return (
+            <a key={a.id} className="zeile" href={`#/gruppe/${gruppe.id}/termin/${a.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <div className="haupt">
+                <div className="titel">{chDatumKurz(a.datum)} · {a.typ}</div>
+                <div className="sub">{[a.zeit, a.dauer && a.dauer + ' Min.', a.ort, a.titel].filter(Boolean).join(' · ') || '—'}</div>
+              </div>
+              {a.status === 'abgesagt' && <span className="pill abgesagt">abgesagt</span>}
+              {a.status === 'durchgefuehrt' && <span className="pill ok">{anwesend}/{gruppe.mitglieder.length} ✓</span>}
+              {a.status === 'geplant' && <span className="pill offen">offen</span>}
+            </a>
+          )
+        })}
+      </div>
+
+      <h2 className="abschnitt">Mitglieder ({gruppe.mitglieder.length})</h2>
+      <MitgliederVerwaltung state={state} update={update} gruppeId={gruppe.id} />
+      <div className="karte" style={{ padding: '0.2rem 1rem' }}>
+        {[...gruppe.mitglieder]
+          .sort((a, b) => {
+            if (a.funktion !== b.funktion) return a.funktion === 'Leiter/in' ? -1 : 1
+            const pa = personById.get(a.personId), pb = personById.get(b.personId)
+            return (pa?.nachname ?? '').localeCompare(pb?.nachname ?? '', 'de')
+          })
+          .map(m => {
+            const p = personById.get(m.personId)
+            if (!p) return null
+            return (
+              <div key={m.personId} className="zeile">
+                <div className="haupt">
+                  <div className="titel">{p.vorname} {p.nachname}</div>
+                  <div className="sub">{m.rolle ?? m.funktion}{!p.jsNummer && ' · ⚠ keine J+S-Nr.'}</div>
+                </div>
+                {m.funktion === 'Leiter/in' && <span className="pill leiter">Leiter/in</span>}
+                <button className="leise" onClick={() => {
+                  if (!confirm(`${p.vorname} ${p.nachname} aus der Gruppe entfernen?`)) return
+                  update(s => {
+                    const n = structuredClone(s)
+                    const g = n.gruppen.find(g => g.id === gruppeId)!
+                    g.mitglieder = g.mitglieder.filter(x => x.personId !== m.personId)
+                    return n
+                  })
+                }}>✕</button>
+              </div>
+            )
+          })}
+      </div>
+    </Seite>
+  )
+}
+
+function TrainerZuteilung({ state, update, gruppeId }: { state: AppState; update: Update; gruppeId: string }) {
+  const benutzer = useBenutzer()
+  const gruppe = state.gruppen.find(g => g.id === gruppeId)!
+  const [neu, setNeu] = useState('')
+  if (benutzer.rolle !== 'master') return null
+  const emails = gruppe.trainerEmails ?? []
+  const setzen = (liste: string[]) =>
+    update(s => {
+      const n = structuredClone(s)
+      n.gruppen.find(g => g.id === gruppeId)!.trainerEmails = liste
+      return n
+    })
+  return (
+    <details className="aufklapp">
+      <summary>Trainer-Zuteilung ({emails.length})</summary>
+      <div className="karte">
+        {emails.map(e => (
+          <div key={e} className="zeile">
+            <div className="haupt"><div className="titel" style={{ fontSize: '0.85rem' }}>{e}</div></div>
+            <button className="leise" onClick={() => setzen(emails.filter(x => x !== e))}>✕</button>
+          </div>
+        ))}
+        {emails.length === 0 && <div className="sub">Noch keinem Trainer-Konto zugeteilt.</div>}
+        <label className="feld">Google-Mailadresse hinzufügen
+          <input value={neu} onChange={e => setNeu(e.target.value)} placeholder="name@gmail.com" />
+        </label>
+        <button className="sekundaer breit" disabled={!/^\S+@\S+\.\S+$/.test(neu.trim())} onClick={() => {
+          setzen([...emails, neu.trim().toLowerCase()])
+          setNeu('')
+        }}>Zuteilen</button>
+        <div className="sub" style={{ marginTop: '0.5rem' }}>
+          Das Konto muss zusätzlich in der <a href="#/trainer">Trainer-Verwaltung</a> freigeschaltet sein.
+        </div>
+      </div>
+    </details>
+  )
+}
+
+function MitgliederVerwaltung({ state, update, gruppeId }: { state: AppState; update: Update; gruppeId: string }) {
+  const gruppe = state.gruppen.find(g => g.id === gruppeId)!
+  const [suche, setSuche] = useState('')
+  const kandidaten = suche.trim().length < 2 ? [] : state.personen
+    .filter(p => !gruppe.mitglieder.some(m => m.personId === p.id))
+    .filter(p => `${p.vorname} ${p.nachname}`.toLowerCase().includes(suche.trim().toLowerCase()))
+    .slice(0, 6)
+
+  const hinzufuegen = (personId: string, funktion: Funktion) =>
+    update(s => {
+      const n = structuredClone(s)
+      n.gruppen.find(g => g.id === gruppeId)!.mitglieder.push({ personId, funktion })
+      return n
+    })
+
+  return (
+    <details className="aufklapp">
+      <summary>+ Mitglied hinzufügen</summary>
+      <div className="karte">
+        <input className="suchfeld" placeholder="Name suchen …" value={suche} onChange={e => setSuche(e.target.value)} />
+        {kandidaten.map(p => (
+          <div key={p.id} className="zeile">
+            <div className="haupt">
+              <div className="titel">{p.vorname} {p.nachname}</div>
+              <div className="sub">{p.geburtsdatum ?? 'ohne Geburtsdatum'}</div>
+            </div>
+            <button className="sekundaer" onClick={() => { hinzufuegen(p.id, 'Teilnehmer/in'); setSuche('') }}>+ TN</button>
+            <button className="leise" onClick={() => { hinzufuegen(p.id, 'Leiter/in'); setSuche('') }}>+ Leiter</button>
+          </div>
+        ))}
+        {suche.trim().length >= 2 && kandidaten.length === 0 && (
+          <div className="sub" style={{ padding: '0.4rem 0' }}>
+            Niemand gefunden. Neue Personen erfasst du unter <a href="#/personen">Personen</a>.
+          </div>
+        )}
+      </div>
+    </details>
+  )
+}
+
+function NeueTermine({ gruppe, state, update, fertig }: { gruppe: string; state: AppState; update: Update; fertig: () => void }) {
+  const g = state.gruppen.find(x => x.id === gruppe)!
+  const [typ, setTyp] = useState<Aktivitaetstyp>('Training')
+  const [datum, setDatum] = useState(heute())
+  const [bis, setBis] = useState('')
+  const [zeit, setZeit] = useState(g.standardZeit ?? '18:30')
+  const [dauer, setDauer] = useState<number>(g.standardDauer ?? 90)
+  const [ort, setOrt] = useState(g.standardOrt ?? '')
+  const istTraining = typ === 'Training'
+  const brauchtDauer = typ === 'Training' || typ === 'Trainingstag'
+  const dauerListe = typ === 'Training' ? DAUER_TRAINING : DAUER_TRAININGSTAG
+
+  const speichern = () => {
+    const daten: string[] = []
+    if (bis && bis > datum) {
+      for (let d = new Date(datum + 'T12:00:00'); ; d.setDate(d.getDate() + 7)) {
+        const iso = d.toISOString().slice(0, 10)
+        if (iso > bis) break
+        daten.push(iso)
+      }
+    } else {
+      daten.push(datum)
+    }
+    update(s => {
+      const n = structuredClone(s)
+      const zg = n.gruppen.find(x => x.id === gruppe)!
+      for (const iso of daten) {
+        const a: Aktivitaet = {
+          id: neueId(), typ, datum: iso, status: 'geplant', anwesenheit: {},
+          zeit: istTraining ? zeit : undefined,
+          dauer: brauchtDauer ? dauer : undefined,
+          ort: istTraining ? ort || undefined : undefined,
+        }
+        zg.aktivitaeten.push(a)
+      }
+      zg.standardZeit = istTraining ? zeit : zg.standardZeit
+      zg.standardDauer = brauchtDauer ? dauer : zg.standardDauer
+      zg.standardOrt = istTraining ? ort || zg.standardOrt : zg.standardOrt
+      return n
+    })
+    fertig()
+  }
+
+  return (
+    <div className="karte">
+      <label className="feld">Aktivitätstyp
+        <select value={typ} onChange={e => setTyp(e.target.value as Aktivitaetstyp)}>
+          <option>Training</option><option>Trainingstag</option><option>Wettkampf</option><option>Lagertag</option>
+        </select>
+      </label>
+      <div className="felder2">
+        <label className="feld">Datum (erster Termin)
+          <input type="date" value={datum} onChange={e => setDatum(e.target.value)} />
+        </label>
+        <label className="feld">Wöchentlich wiederholen bis (optional)
+          <input type="date" value={bis} onChange={e => setBis(e.target.value)} />
+        </label>
+      </div>
+      {istTraining && (
+        <div className="felder2">
+          <label className="feld">Zeit
+            <input type="time" value={zeit} onChange={e => setZeit(e.target.value)} />
+          </label>
+          <label className="feld">Ort (Halle)
+            <input value={ort} onChange={e => setOrt(e.target.value)} placeholder="z. B. Halle Schwerzenbach" />
+          </label>
+        </div>
+      )}
+      {brauchtDauer && (
+        <label className="feld">Dauer (NDS-Werteliste)
+          <select value={dauer} onChange={e => setDauer(Number(e.target.value))}>
+            {dauerListe.map(d => <option key={d} value={d}>{d} Minuten</option>)}
+          </select>
+        </label>
+      )}
+      <button className="breit" onClick={speichern}>
+        {bis && bis > datum ? 'Serie anlegen' : 'Termin anlegen'}
+      </button>
+    </div>
+  )
+}
