@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { AppState, Aktivitaet, Aktivitaetstyp } from '../types'
 import { neueId } from '../types'
-import type { Update } from '../App'
+import { useBenutzer, type Update } from '../App'
 import { fetchUrl, icsMergen, nurZukuenftig, parseIcs, verwaisteTermine, type IcsSyncErgebnis } from '../lib/icsImport'
 import { ICAL_VORLAGEN } from '../config/icalVorlagen'
 import { chDatumKurz } from './GruppeDetail'
@@ -24,6 +24,7 @@ function kurzUrl(url: string): string {
 }
 
 export function KalenderSektion({ state, update, gruppeId }: { state: AppState; update: Update; gruppeId: string }) {
+  const benutzer = useBenutzer()
   const gruppe = state.gruppen.find(g => g.id === gruppeId)!
   const quellen = gruppe.icalQuellen ?? []
   const [laeuft, setLaeuft] = useState(false)
@@ -32,6 +33,7 @@ export function KalenderSektion({ state, update, gruppeId }: { state: AppState; 
   const [neuTyp, setNeuTyp] = useState<Aktivitaetstyp>('Training')
   const [verwaist, setVerwaist] = useState<Aktivitaet[] | null>(null)
   const [ausgewaehlt, setAusgewaehlt] = useState<Set<string>>(new Set())
+  if (benutzer.rolle === 'trainer') return null
 
   const synchronisieren = async () => {
     setLaeuft(true)
