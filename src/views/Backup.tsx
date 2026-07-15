@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { AppState } from '../types'
-import { LEER } from '../types'
 import { Seite, type Update } from '../App'
 
 interface BackupDatei {
@@ -18,7 +17,6 @@ function zeitstempelDateiname(): string {
 
 export function BackupView({ state, update }: { state: AppState; update: Update }) {
   const [meldung, setMeldung] = useState<{ art: 'info' | 'fehler'; text: string } | null>(null)
-  const [loeschBestaetigung, setLoeschBestaetigung] = useState('')
 
   const anzahlAnwesenheiten = state.gruppen.reduce(
     (s, g) => s + g.aktivitaeten.reduce((t, a) => t + Object.values(a.anwesenheit).filter(Boolean).length, 0), 0)
@@ -67,18 +65,6 @@ export function BackupView({ state, update }: { state: AppState; update: Update 
     }
   }
 
-  const allesLoeschen = () => {
-    if (loeschBestaetigung !== 'LÖSCHEN') return
-    if (!confirm(
-      `Wirklich ALLE Daten löschen? ${state.personen.length} Personen, ${state.gruppen.length} Gruppen, ` +
-      `${anzahlTermine} Termine, ${anzahlAnwesenheiten} Anwesenheiten, ${state.fotos.length} Fotos — unwiderruflich. ` +
-      `Lade vorher ein Backup herunter, falls du das nicht schon getan hast.`
-    )) return
-    update(() => structuredClone(LEER))
-    setLoeschBestaetigung('')
-    setMeldung({ art: 'info', text: 'Alle Daten wurden gelöscht.' })
-  }
-
   return (
     <Seite titel="Datensicherung" zurueck="" tab="gruppen">
       <div className="statzeile">
@@ -102,21 +88,6 @@ export function BackupView({ state, update }: { state: AppState; update: Update 
           Spielt eine zuvor gesicherte Datei zurück. <b>Ersetzt den aktuellen Datenbestand vollständig.</b>
         </p>
         <input type="file" accept="application/json,.json" onChange={e => e.target.files?.[0] && wiederherstellen(e.target.files[0])} />
-      </div>
-
-      <div className="karte">
-        <h3 style={{ marginTop: 0 }}>Alle Daten löschen</h3>
-        <p className="sub" style={{ color: 'var(--muted)' }}>
-          Entfernt sämtliche Personen, Gruppen, Termine, Anwesenheiten und Fotos unwiderruflich — z. B. um
-          nach einem Formularwechsel komplett neu zu importieren. Lade vorher unbedingt ein Backup herunter.
-          Tippe zur Bestätigung <b>LÖSCHEN</b> ein.
-        </p>
-        <label className="feld">Bestätigung
-          <input value={loeschBestaetigung} onChange={e => setLoeschBestaetigung(e.target.value)} placeholder="LÖSCHEN" />
-        </label>
-        <button className="breit" disabled={loeschBestaetigung !== 'LÖSCHEN'} onClick={allesLoeschen}>
-          Alle Daten endgültig löschen
-        </button>
       </div>
 
       {meldung && <div className={`hinweis ${meldung.art}`}>{meldung.text}</div>}

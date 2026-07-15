@@ -1,0 +1,23 @@
+name: Firestore-Wipe (einmalig)
+
+# Nur manuell auslösbar. Wird nach dem einmaligen Gebrauch wieder entfernt.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Zur Bestätigung exakt JA_ALLES_LOESCHEN eintippen'
+        required: true
+
+jobs:
+  wipe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npx tsx scripts/wipe-firestore.ts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          WIPE_CONFIRM: ${{ inputs.confirm }}
