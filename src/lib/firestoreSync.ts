@@ -55,6 +55,7 @@ export function abonnieren(
   aufFehler: (fehler: string) => void,
 ): () => void {
   if (!db) return () => {}
+  const firestore = db
   const personen = new Map<string, Person>()
   const vertraulich = new Map<string, Vertraulich>()
   const gruppen = new Map<string, Gruppe & GruppeMeta>()
@@ -78,50 +79,97 @@ export function abonnieren(
     aufState(staat)
   }
 
-  const fehler = (wo: string) => (e: unknown) => aufFehler(`${wo}: ${String(e)}`)
+  // Direkt nach dem Login kann das Auth-Token die Firestore-Regeln (die bei
+  // personenVertraulich zusätzlich das Trainer-Dokument nachschlagen) einen
+  // Sekundenbruchteil zu spät erreichen — der erste Verbindungsversuch schlägt
+  // dann mit permission-denied fehl, obwohl der Zugriff eigentlich erlaubt ist.
+  // Solche Fehler ein paar Mal mit Verzögerung automatisch wiederholen, statt
+  // sofort einen fatalen Verbindungsfehler zu zeigen.
+  function mitWiederholung(
+    starten: (auf: (snap: QuerySnapshot<DocumentData>) => void, fehler: (e: unknown) => void) => () => void,
+    auf: (snap: QuerySnapshot<DocumentData>) => void,
+    wo: string,
+  ): () => void {
+    let versuche = 0
+    let gestoppt = false
+    let aktuelleUnsub = () => {}
+    const starteListener = () => {
+      aktuelleUnsub = starten(auf, (e: unknown) => {
+        const code = (e as { code?: string } | null)?.code
+        if (code === 'permission-denied' && versuche < 3 && !gestoppt) {
+          versuche++
+          setTimeout(() => { if (!gestoppt) starteListener() }, 600 * versuche)
+          return
+        }
+        aufFehler(`${wo}: ${String(e)}`)
+      })
+    }
+    starteListener()
+    return () => { gestoppt = true; aktuelleUnsub() }
+  }
 
   const unsubs = [
-    onSnapshot(collection(db, 'personen'), (snap: QuerySnapshot<DocumentData>) => {
-      personen.clear()
-      snap.forEach(d => personen.set(d.id, { ...(d.data() as Person), id: d.id }))
-      bereit.personen = true
-      melden()
-    }, fehler('personen')),
+    mitWiederholung(
+      (auf, fehlerFn) => onSnapshot(collection(firestore, 'personen'), auf, fehlerFn),
+      snap => {
+        personen.clear()
+        snap.forEach(d => personen.set(d.id, { ...(d.data() as Person), id: d.id }))
+        bereit.personen = true
+        melden()
+      },
+      'personen',
+    ),
 
-    onSnapshot(collection(db, 'gruppen'), snap => {
-      gruppen.clear()
-      snap.forEach(d => gruppen.set(d.id, { ...(d.data() as Gruppe & GruppeMeta), id: d.id, aktivitaeten: [] }))
-      bereit.gruppen = true
-      melden()
-    }, fehler('gruppen')),
+    mitWiederholung(
+      (auf, fehlerFn) => onSnapshot(collection(firestore, 'gruppen'), auf, fehlerFn),
+      snap => {
+        gruppen.clear()
+        snap.forEach(d => gruppen.set(d.id, { ...(d.data() as Gruppe & GruppeMeta), id: d.id, aktivitaeten: [] }))
+        bereit.gruppen = true
+        melden()
+      },
+      'gruppen',
+    ),
 
-    onSnapshot(collectionGroup(db, 'aktivitaeten'), snap => {
-      aktivitaeten.clear()
-      snap.forEach(d => {
-        const gruppeId = d.ref.parent.parent?.id
-        if (!gruppeId) return
-        if (!aktivitaeten.has(gruppeId)) aktivitaeten.set(gruppeId, new Map())
-        aktivitaeten.get(gruppeId)!.set(d.id, { ...(d.data() as Aktivitaet), id: d.id })
-      })
-      bereit.akt = true
-      melden()
-    }, fehler('aktivitaeten')),
+    mitWiederholung(
+      (auf, fehlerFn) => onSnapshot(collectionGroup(firestore, 'aktivitaeten'), auf, fehlerFn),
+      snap => {
+        aktivitaeten.clear()
+        snap.forEach(d => {
+          const gruppeId = d.ref.parent.parent?.id
+          if (!gruppeId) return
+          if (!aktivitaeten.has(gruppeId)) aktivitaeten.set(gruppeId, new Map())
+          aktivitaeten.get(gruppeId)!.set(d.id, { ...(d.data() as Aktivitaet), id: d.id })
+        })
+        bereit.akt = true
+        melden()
+      },
+      'aktivitaeten',
+    ),
 
-    onSnapshot(collection(db, 'fotos'), snap => {
-      fotos.clear()
-      snap.forEach(d => fotos.set(d.id, { ...(d.data() as Foto), id: d.id }))
-      bereit.fotos = true
-      melden()
-    }, fehler('fotos')),
+    mitWiederholung(
+      (auf, fehlerFn) => onSnapshot(collection(firestore, 'fotos'), auf, fehlerFn),
+      snap => {
+        fotos.clear()
+        snap.forEach(d => fotos.set(d.id, { ...(d.data() as Foto), id: d.id }))
+        bereit.fotos = true
+        melden()
+      },
+      'fotos',
+    ),
   ]
 
   if (istMaster) {
-    unsubs.push(onSnapshot(collection(db, 'personenVertraulich'), snap => {
-      vertraulich.clear()
-      snap.forEach(d => vertraulich.set(d.id, d.data() as Vertraulich))
-      bereit.vertraulich = true
-      melden()
-    }, fehler('personenVertraulich')))
+    unsubs.push(mitWiederholung(
+      (auf, fehlerFn) => onSnapshot(collection(firestore, 'personenVertraulich'), auf, fehlerFn),
+      snap => {
+        vertraulich.clear()
+        snap.forEach(d => vertraulich.set(d.id, d.data() as Vertraulich))
+        bereit.vertraulich = true
+        melden()
+      },
+      'personenVertraulich',
+    ))
   }
 
   return () => unsubs.forEach(u => u())
