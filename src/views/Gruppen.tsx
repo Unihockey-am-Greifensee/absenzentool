@@ -1,9 +1,8 @@
 import type { AppState } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
-import { VorlagenKnopf } from './IcalSync'
 import { heute } from '../lib/datum'
 
-export function GruppenListe({ state, update }: { state: AppState; update: Update }) {
+export function GruppenListe({ state }: { state: AppState; update: Update }) {
   const benutzer = useBenutzer()
   const istMaster = benutzer.rolle !== 'trainer'
 
@@ -40,14 +39,6 @@ export function GruppenListe({ state, update }: { state: AppState; update: Updat
           </a>
         )
       })}
-      {istMaster && state.gruppen.length > 0 && (
-        <div className="btnreihe" style={{ flexDirection: 'column' }}>
-          <a className="btn sekundaer breit" href="#/import">kOOL-Export importieren</a>
-          <VorlagenKnopf update={update} />
-          {benutzer.rolle === 'master' && <a className="btn leise breit" href="#/trainer">Trainer-Verwaltung</a>}
-          <a className="btn leise breit" href="#/backup">Datensicherung</a>
-        </div>
-      )}
     </Seite>
   )
 }
