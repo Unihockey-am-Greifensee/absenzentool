@@ -1,5 +1,7 @@
 // Zentrales Datenmodell — bewusst nah an den NDS-Exportfeldern gehalten.
 
+import type { AnwesenheitStatus } from './lib/anwesenheit'
+
 export type Funktion = 'Teilnehmer/in' | 'Leiter/in'
 export type Aktivitaetstyp = 'Training' | 'Trainingstag' | 'Wettkampf' | 'Lagertag'
 export type AktivitaetsStatus = 'geplant' | 'durchgefuehrt' | 'abgesagt'
@@ -43,7 +45,9 @@ export interface Aktivitaet {
   fokus?: string // nur bei Training/Trainingstag
   titel?: string // Anzeige, z. B. aus iCal-SUMMARY
   status: AktivitaetsStatus
-  anwesenheit: Record<string, boolean> // personId -> anwesend
+  // personId -> Status. Ältere Termine enthalten noch `true` (= anwesend) statt
+  // eines Status-Strings — siehe lib/anwesenheit.ts für den robusten Zugriff.
+  anwesenheit: Record<string, AnwesenheitStatus | boolean>
   icalUid?: string // gesetzt, wenn der Termin aus einem iCal-Feed stammt
   abgeschlossen?: boolean // Trainer hat den Termin bewusst abgeschlossen — steuert nur die
   // Übersichts-Einteilung (Aktuell/Abgeschlossen), unabhängig von status/NDS-Export

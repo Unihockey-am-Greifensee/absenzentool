@@ -8,6 +8,8 @@ import { KalenderSektion } from './IcalSync'
 import { useTrainerListe } from '../lib/useTrainerListe'
 import { aktiveMitglieder, hatAnwesenheit, statusVon } from '../lib/mitglieder'
 import { terminGruppen, type TerminGruppe } from '../lib/termine'
+import { istAnwesend } from '../lib/anwesenheit'
+import { neuestesFoto } from '../lib/saison'
 
 const WOCHENTAGE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 
@@ -41,7 +43,7 @@ export function GruppeDetail({ state, update, gruppeId }: { state: AppState; upd
 
 function terminZeile(gruppe: Gruppe, t: TerminGruppe) {
   const a = t.haupt
-  const anwesend = Object.values(a.anwesenheit).filter(Boolean).length
+  const anwesend = Object.values(a.anwesenheit).filter(istAnwesend).length
   return (
     <a key={a.id} className="zeile" href={`#/gruppe/${gruppe.id}/termin/${a.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
       <div className="haupt">
@@ -152,8 +154,10 @@ function MitgliederSektionen({ state, update, gruppeId }: { state: AppState; upd
   const zeile = (m: Mitglied, pillText?: string) => {
     const p = personById.get(m.personId)
     if (!p) return null
+    const foto = neuestesFoto(state.fotos, m.personId)
     return (
       <div key={m.personId} className="zeile">
+        {foto && <img src={foto.datenUrl} alt="" className="foto-icon" />}
         <div className="haupt">
           <div className="titel">{p.vorname} {p.nachname}</div>
           <div className="sub">{m.rolle ?? m.funktion}{!p.jsNummer && ' · ⚠ keine J+S-Nr.'}</div>

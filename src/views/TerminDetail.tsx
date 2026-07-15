@@ -1,9 +1,16 @@
-import type { Aktivitaet, AppState } from '../types'
+import type { Aktivitaet, AppState, Mitglied } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
 import { chDatumKurz } from './GruppeDetail'
 import { aktiveMitglieder, statusVon } from '../lib/mitglieder'
 import { terminGeschwister } from '../lib/termine'
 import { neuestesFoto } from '../lib/saison'
+import { anwesenheitStatus, zaehleStatus, type AnwesenheitStatus } from '../lib/anwesenheit'
+
+const STATUS_OPTIONEN: { status: AnwesenheitStatus; label: string; titel: string }[] = [
+  { status: 'anwesend', label: 'AN', titel: 'Anwesend' },
+  { status: 'abgemeldet', label: 'AB', titel: 'Abgemeldet' },
+  { status: 'unabgemeldet', label: 'UN', titel: 'Unabgemeldet' },
+]
 
 export function TerminDetail({ state, update, gruppeId, terminId }: {
   state: AppState; update: Update; gruppeId: string; terminId: string
@@ -20,12 +27,13 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
   const mehrereSpiele = geschwister.length > 1
 
   const personById = new Map(state.personen.map(p => [p.id, p]))
-  const mitglieder = aktiveMitglieder(gruppe).sort((a, b) => {
-    if (a.funktion !== b.funktion) return a.funktion === 'Leiter/in' ? -1 : 1
-    const pa = personById.get(a.personId), pb = personById.get(b.personId)
-    return (pa?.nachname ?? '').localeCompare(pb?.nachname ?? '', 'de')
-  })
-  const anwesend = Object.values(termin.anwesenheit).filter(Boolean).length
+  const nachName = (a: Mitglied, b: Mitglied) =>
+    (personById.get(a.personId)?.nachname ?? '').localeCompare(personById.get(b.personId)?.nachname ?? '', 'de')
+  const aktive = aktiveMitglieder(gruppe)
+  const coach = aktive.filter(m => statusVon(m) === 'aktiv' && m.funktion === 'Leiter/in').sort(nachName)
+  const team = aktive.filter(m => statusVon(m) === 'aktiv' && m.funktion === 'Teilnehmer/in').sort(nachName)
+  const schnuppernde = aktive.filter(m => statusVon(m) === 'schnuppernd').sort(nachName)
+  const zaehlung = zaehleStatus(termin.anwesenheit, aktive.map(m => m.personId))
 
   // Wirkt auf alle Geschwister eines Wettkampf-Tages gleichzeitig (siehe lib/termine.ts) —
   // dadurch reicht EINE Anwesenheitserfassung für z. B. zwei Spiele am selben Tag.
@@ -40,11 +48,46 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
       return n
     })
 
-  const toggle = (personId: string) =>
+  const setzeStatus = (personId: string, status: AnwesenheitStatus) =>
     mutiere(a => {
-      a.anwesenheit[personId] = !a.anwesenheit[personId]
+      const aktuell = anwesenheitStatus(a.anwesenheit[personId])
+      if (aktuell === status) delete a.anwesenheit[personId]
+      else a.anwesenheit[personId] = status
       if (a.status === 'geplant') a.status = 'durchgefuehrt'
     })
+
+  const gesperrt = termin.status === 'abgesagt' || !!termin.abgeschlossen
+
+  const gruppenBox = (titel: string, liste: Mitglied[], leerText: string) => (
+    <>
+      <h2 className="abschnitt">{titel} ({liste.length})</h2>
+      <div className="karte" style={{ padding: '0.2rem 1rem' }}>
+        {liste.length === 0 && <div className="sub" style={{ padding: '0.5rem 0' }}>{leerText}</div>}
+        {liste.map(m => {
+          const p = personById.get(m.personId)
+          if (!p) return null
+          const foto = neuestesFoto(state.fotos, m.personId)
+          const aktuell = anwesenheitStatus(termin.anwesenheit[m.personId])
+          return (
+            <div key={m.personId} className="zeile">
+              {foto && <img src={foto.datenUrl} alt="" className="foto-icon" />}
+              <div className="haupt">
+                <div className="titel">{p.vorname} {p.nachname}</div>
+                {m.rolle && <div className="sub">{m.rolle}</div>}
+              </div>
+              <div className="statusreihe">
+                {STATUS_OPTIONEN.map(o => (
+                  <button key={o.status} type="button" title={o.titel} disabled={gesperrt}
+                    className={'statusbtn ' + o.status + (aktuell === o.status ? ' aktiv' : '')}
+                    onClick={() => setzeStatus(m.personId, o.status)}>{o.label}</button>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </>
+  )
 
   return (
     <Seite titel={`${chDatumKurz(termin.datum)} · ${termin.typ}`} zurueck={`gruppe/${gruppeId}`} tab="gruppen">
@@ -62,7 +105,7 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
           Dieser Termin ist als <b>abgesagt</b> markiert und erscheint nicht im Export.
           <div className="btnreihe" style={{ marginBottom: 0 }}>
             <button className="sekundaer" onClick={() => mutiere(a => {
-              a.status = anwesend > 0 ? 'durchgefuehrt' : 'geplant'
+              a.status = zaehlung.anwesend > 0 ? 'durchgefuehrt' : 'geplant'
               a.abgeschlossen = false
             })}>Absage rückgängig</button>
           </div>
@@ -71,7 +114,7 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
         <>
           <div className="btnreihe">
             <button className="sekundaer" disabled={termin.abgeschlossen} onClick={() => mutiere(a => {
-              for (const m of mitglieder) a.anwesenheit[m.personId] = true
+              for (const m of aktive) a.anwesenheit[m.personId] = 'anwesend'
               a.status = 'durchgefuehrt'
             })}>Alle anwesend</button>
             <button className="leise" disabled={termin.abgeschlossen} onClick={() => mutiere(a => { a.anwesenheit = {}; a.status = 'geplant' })}>Zurücksetzen</button>
@@ -82,34 +125,16 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
             }}>Training abgesagt</button>
           </div>
           <div className="hinweis info">
-            {anwesend} von {mitglieder.length} anwesend
-            {termin.abgeschlossen ? ' — abgeschlossen, «Wieder öffnen» zum Bearbeiten.' : ' — Antippen zum Abhaken.'}
+            {zaehlung.anwesend} anwesend · {zaehlung.abgemeldet} abgemeldet · {zaehlung.unabgemeldet} unabgemeldet
+            {zaehlung.offen > 0 && ` · ${zaehlung.offen} offen`}
+            {termin.abgeschlossen ? ' — abgeschlossen, «Wieder öffnen» zum Bearbeiten.' : ''}
           </div>
         </>
       )}
 
-      <div className="karte" style={{ padding: '0.2rem 1rem' }}>
-        {mitglieder.map(m => {
-          const p = personById.get(m.personId)
-          if (!p) return null
-          const an = !!termin.anwesenheit[m.personId]
-          const gesperrt = termin.status === 'abgesagt' || !!termin.abgeschlossen
-          const foto = neuestesFoto(state.fotos, m.personId)
-          return (
-            <div key={m.personId} className="zeile" style={{ cursor: gesperrt ? 'default' : 'pointer', opacity: termin.abgeschlossen ? 0.6 : 1 }}
-              onClick={() => !gesperrt && toggle(m.personId)}>
-              <span className={'check' + (an ? ' an' : '')}>✓</span>
-              {foto && <img src={foto.datenUrl} alt="" className="foto-icon" />}
-              <div className="haupt">
-                <div className="titel">{p.vorname} {p.nachname}</div>
-                {m.funktion === 'Leiter/in' && <div className="sub">{m.rolle ?? 'Leiter/in'}</div>}
-              </div>
-              {m.funktion === 'Leiter/in' && <span className="pill leiter">Leiter/in</span>}
-              {statusVon(m) === 'schnuppernd' && <span className="pill offen">Schnuppern</span>}
-            </div>
-          )
-        })}
-      </div>
+      {gruppenBox('Coach', coach, 'Kein Coach in dieser Gruppe.')}
+      {gruppenBox('Team', team, 'Keine Spieler/innen in dieser Gruppe.')}
+      {gruppenBox('Schnuppernde', schnuppernde, 'Niemand am Schnuppern.')}
 
       {termin.status !== 'abgesagt' && (
         <div className="btnreihe">

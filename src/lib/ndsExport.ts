@@ -1,4 +1,5 @@
 import type { AppState, Aktivitaet, Gruppe, Person } from '../types'
+import { istAnwesend } from './anwesenheit'
 
 // Erzeugt die drei NDS-Import-Dateien exakt gemäss den offiziellen
 // BASPO-Anleitungen (jugendundsport.ch/de/datenimport, Stand 2023/2024):
@@ -98,7 +99,7 @@ export function ndsExport(state: AppState, auswahl: ExportAuswahl): ExportResult
       ])
 
       for (const m of g.mitglieder) {
-        if (!a.anwesenheit[m.personId]) continue
+        if (!istAnwesend(a.anwesenheit[m.personId])) continue
         const p = personenById.get(m.personId)
         if (!p) continue
         beteiligte.set(p.id, p)

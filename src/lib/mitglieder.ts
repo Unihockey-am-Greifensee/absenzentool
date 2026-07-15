@@ -1,4 +1,5 @@
 import type { Gruppe, Mitglied, MitgliedStatus } from '../types'
+import { istAnwesend } from './anwesenheit'
 
 export function statusVon(m: Mitglied): MitgliedStatus {
   return m.status ?? 'aktiv'
@@ -15,5 +16,5 @@ export function aktiveMitglieder(gruppe: Gruppe): Mitglied[] {
 }
 
 export function hatAnwesenheit(gruppe: Gruppe, personId: string): boolean {
-  return gruppe.aktivitaeten.some(a => a.anwesenheit[personId])
+  return gruppe.aktivitaeten.some(a => istAnwesend(a.anwesenheit[personId]))
 }

@@ -167,6 +167,16 @@ label.feld input, label.feld select {
 }
 .check.an { background: var(--accent); border-color: var(--accent); color: var(--ink); }
 
+.statusreihe { display: flex; gap: 0.3rem; flex-shrink: 0; }
+.statusbtn {
+  width: 32px; height: 32px; border-radius: var(--radius-md); border: 1.5px solid var(--line);
+  background: transparent; color: var(--muted); font-weight: 800; font-size: 0.68rem;
+  display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0;
+}
+.statusbtn.anwesend.aktiv { background: var(--forest-tint); border-color: var(--ink); color: var(--ink); }
+.statusbtn.abgemeldet.aktiv { background: var(--amber-tint); border-color: var(--accent); color: var(--accent-ink); }
+.statusbtn.unabgemeldet.aktiv { background: var(--err-bg); border-color: var(--err-ink); color: var(--err-ink); }
+
 .foto-icon {
   width: 34px; height: 34px; border-radius: var(--radius-md); border: 1.5px solid var(--line);
   object-fit: cover; flex-shrink: 0;
