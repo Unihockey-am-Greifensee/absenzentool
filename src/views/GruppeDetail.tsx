@@ -131,7 +131,7 @@ function MitgliederSektionen({ state, update, gruppeId }: { state: AppState; upd
     update(s => {
       const n = structuredClone(s)
       const g = n.gruppen.find(g => g.id === gruppeId)!
-      g.mitglieder.find(m => m.personId === personId)!.status = undefined
+      g.mitglieder.find(m => m.personId === personId)!.status = 'aktiv'
       return n
     })
 

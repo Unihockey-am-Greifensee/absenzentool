@@ -159,7 +159,7 @@ function PersonGruppen({ state, update, person }: { state: AppState; update: Upd
       const g = n.gruppen.find(x => x.id === gruppeId)!
       const m = g.mitglieder.find(x => x.personId === person.id)
       if (m && statusVon(m) !== 'archiviert') m.status = 'archiviert'
-      else if (m) m.status = undefined
+      else if (m) m.status = 'aktiv'
       else g.mitglieder.push({ personId: person.id, funktion: 'Teilnehmer/in', status: 'aktiv' })
       return n
     })

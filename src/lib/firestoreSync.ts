@@ -40,7 +40,11 @@ function personTeilen(p: Person): { doc: Omit<Person, 'ahvNr' | 'peid'>; vertrau
 
 function gruppeTeilen(g: Gruppe): { doc: Omit<Gruppe, 'aktivitaeten'>; aktivitaeten: Aktivitaet[] } {
   const { aktivitaeten, ...rest } = g
-  return { doc: ohneUndefined(rest), aktivitaeten }
+  // ohneUndefined() räumt nur oberflächliche Felder auf — Firestore lehnt aber auch
+  // undefined-Werte INNERHALB von Arrays ab (z. B. Mitglied.status), daher hier
+  // zusätzlich jedes Mitglied einzeln bereinigen.
+  const bereinigt = { ...rest, mitglieder: rest.mitglieder.map(m => ohneUndefined({ ...m })) }
+  return { doc: ohneUndefined(bereinigt), aktivitaeten }
 }
 
 /** Baut aus den Snapshots einen AppState zusammen und meldet jede Änderung. */
