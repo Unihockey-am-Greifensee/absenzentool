@@ -73,6 +73,7 @@ export interface Gruppe {
   aktivitaeten: Aktivitaet[]
   icalQuellen?: IcalQuelle[]
   trainerEmails?: string[] // Google-Konten mit Schreibrecht auf diese Gruppe
+  kOOLNamen?: string[] // Team-Namen aus dem kOOL-Import, die dieser Gruppe zugeordnet wurden (Aliase)
   standardZeit?: string
   standardDauer?: number
   standardOrt?: string

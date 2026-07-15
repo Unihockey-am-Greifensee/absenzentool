@@ -6,6 +6,7 @@ export function AdminHub({ update }: { update: Update }) {
   return (
     <Seite titel="Admin" tab="export">
       <div className="btnreihe" style={{ flexDirection: 'column', marginTop: 0 }}>
+        <a className="btn sekundaer breit" href="#/gruppen-verwalten">Gruppen verwalten</a>
         <a className="btn sekundaer breit" href="#/import">kOOL-Export importieren</a>
         <VorlagenKnopf update={update} />
         {benutzer.rolle === 'master' && (

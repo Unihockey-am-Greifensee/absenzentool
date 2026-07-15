@@ -14,6 +14,7 @@ import { LadeAnzeige, LoginView, NichtFreigeschaltet } from './views/Auth'
 import { TrainerAdmin } from './views/TrainerAdmin'
 import { BackupView } from './views/Backup'
 import { AdminHub } from './views/Admin'
+import { GruppenVerwaltung } from './views/GruppenVerwaltung'
 
 export type Update = (fn: (s: AppState) => AppState) => void
 
@@ -56,6 +57,7 @@ function Router({ state, update }: { state: AppState; update: Update }) {
   if (seg[0] === 'nds-export' && istMaster) return <ExportView state={state} />
   if (seg[0] === 'trainer' && benutzer.rolle === 'master') return <TrainerAdmin eigeneEmail={benutzer.email!} />
   if (seg[0] === 'backup' && istMaster) return <BackupView state={state} update={update} />
+  if (seg[0] === 'gruppen-verwalten' && istMaster) return <GruppenVerwaltung state={state} update={update} />
   return <GruppenListe state={state} update={update} />
 }
 

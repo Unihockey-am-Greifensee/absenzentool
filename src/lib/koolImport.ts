@@ -1,4 +1,4 @@
-import type { AppState, Funktion, Person } from '../types'
+import type { AppState, Funktion, Gruppe, Person } from '../types'
 import { neueId } from '../types'
 
 // Parser für den kOOL-Excel-Export (Blatt «kOOL»).
@@ -13,9 +13,46 @@ export interface KoolZeile {
 export interface ImportErgebnis {
   neuePersonen: number
   aktualisiertePersonen: number
-  neueGruppen: number
   mitgliedschaften: number
+  uebersprungeneTeams: number
   warnungen: string[]
+}
+
+/** Team-Namen ("Unihockey U13 SCHWERZI: SpielerIn, …") aus der Teams-Spalte extrahieren, ohne Rollen-Suffix. */
+function teamNameVon(eintrag: string): string {
+  const doppelpunkt = eintrag.lastIndexOf(':')
+  return (doppelpunkt >= 0 ? eintrag.slice(0, doppelpunkt) : eintrag).trim()
+}
+
+/** Alle in der Datei vorkommenden kOOL-Team-Namen, dedupliziert (erste Schreibweise gewinnt). */
+export function sammleTeamNamen(zeilen: KoolZeile[]): string[] {
+  const gesehen = new Map<string, string>() // normalisiert -> Original-Schreibweise
+  for (const zeile of zeilen) {
+    const teamsRoh = alsText(feld(zeile, 'Teams'))
+    if (!teamsRoh) continue
+    for (const eintrag of teamsRoh.split(',')) {
+      const teamName = teamNameVon(eintrag.trim())
+      if (!teamName) continue
+      const key = teamName.toLowerCase()
+      if (!gesehen.has(key)) gesehen.set(key, teamName)
+    }
+  }
+  return [...gesehen.values()].sort((a, b) => a.localeCompare(b, 'de'))
+}
+
+export interface TeamZuordnungsVorschlag {
+  teamName: string
+  gruppeId: string | null // bereits bekannt (Name- oder Alias-Treffer) oder null = noch zu wählen
+}
+
+/** Versucht jeden Team-Namen automatisch einer bestehenden Gruppe zuzuordnen (Name- oder Alias-Treffer). */
+export function teamZuordnungVorschlagen(gruppen: Gruppe[], teamNamen: string[]): TeamZuordnungsVorschlag[] {
+  return teamNamen.map(teamName => {
+    const key = teamName.toLowerCase()
+    const treffer = gruppen.find(g =>
+      g.name.toLowerCase() === key || (g.kOOLNamen ?? []).some(a => a.toLowerCase() === key))
+    return { teamName, gruppeId: treffer?.id ?? null }
+  })
 }
 
 const LEITER_ROLLEN = ['trainerin', 'trainer', 'co-trainerin', 'co-trainer', 'headcoach', 'coach', 'leiterin', 'leiter']
@@ -91,10 +128,22 @@ function personenSchluessel(p: { ahvNr?: string; vorname: string; nachname: stri
   return 'name:' + `${p.vorname}|${p.nachname}|${p.geburtsdatum ?? ''}`.toLowerCase()
 }
 
-/** Importiert kOOL-Zeilen in den bestehenden Zustand (mutiert eine Kopie und gibt sie zurück). */
-export function koolImportieren(state: AppState, zeilen: KoolZeile[]): { state: AppState; ergebnis: ImportErgebnis } {
+export interface ImportOptionen {
+  teamZuordnung: Record<string, string | null> // teamName (Original-Schreibweise) -> gruppeId, null = ignorieren
+  ueberschreiben: boolean // true: kOOL-Werte gewinnen (bisheriges Verhalten). false: bestehende Werte bleiben, nur Lücken werden gefüllt.
+}
+
+/**
+ * Importiert kOOL-Zeilen in den bestehenden Zustand (mutiert eine Kopie und gibt sie zurück).
+ * Legt NIE neue Gruppen an — Team-Namen ohne Zuordnung in `optionen.teamZuordnung` werden
+ * übersprungen (siehe sammleTeamNamen/teamZuordnungVorschlagen für den vorgelagerten Abgleich-Schritt).
+ */
+export function koolImportieren(
+  state: AppState, zeilen: KoolZeile[], optionen: ImportOptionen,
+): { state: AppState; ergebnis: ImportErgebnis } {
   const neu: AppState = JSON.parse(JSON.stringify(state))
-  const ergebnis: ImportErgebnis = { neuePersonen: 0, aktualisiertePersonen: 0, neueGruppen: 0, mitgliedschaften: 0, warnungen: [] }
+  const ergebnis: ImportErgebnis = { neuePersonen: 0, aktualisiertePersonen: 0, mitgliedschaften: 0, uebersprungeneTeams: 0, warnungen: [] }
+  const uebersprungen = new Set<string>()
 
   const index = new Map<string, Person>()
   for (const p of neu.personen) {
@@ -127,19 +176,22 @@ export function koolImportieren(state: AppState, zeilen: KoolZeile[]): { state: 
       ?? index.get('name:' + `${vorname}|${nachname}|${kandidat.geburtsdatum ?? ''}`.toLowerCase())
 
     if (person) {
-      // kOOL ist führend für Stammdaten; manuell gepflegte Felder nur füllen, wenn leer.
+      // Bei "überschreiben" ist kOOL führend (Lücken werden trotzdem vom bestehenden
+      // Wert gefüllt); sonst bleiben bestehende Werte stehen und nur Lücken werden ergänzt.
+      const wert = <K extends 'strasse' | 'hausnummer' | 'plz' | 'ort' | 'land' | 'ahvNr' | 'email' | 'geschlecht' | 'geburtsdatum' | 'jsNummer'>(feldname: K) =>
+        optionen.ueberschreiben ? (kandidat[feldname] ?? person![feldname]) : (person![feldname] ?? kandidat[feldname])
       Object.assign(person, {
         vorname, nachname,
-        strasse: kandidat.strasse ?? person.strasse,
-        hausnummer: kandidat.hausnummer ?? person.hausnummer,
-        plz: kandidat.plz ?? person.plz,
-        ort: kandidat.ort ?? person.ort,
-        land: kandidat.land ?? person.land,
-        ahvNr: kandidat.ahvNr ?? person.ahvNr,
-        email: kandidat.email ?? person.email,
-        geschlecht: kandidat.geschlecht ?? person.geschlecht,
-        geburtsdatum: kandidat.geburtsdatum ?? person.geburtsdatum,
-        jsNummer: kandidat.jsNummer ?? person.jsNummer,
+        strasse: wert('strasse'),
+        hausnummer: wert('hausnummer'),
+        plz: wert('plz'),
+        ort: wert('ort'),
+        land: wert('land'),
+        ahvNr: wert('ahvNr'),
+        email: wert('email'),
+        geschlecht: wert('geschlecht'),
+        geburtsdatum: wert('geburtsdatum'),
+        jsNummer: wert('jsNummer'),
         quelle: 'kool',
       })
       ergebnis.aktualisiertePersonen++
@@ -164,16 +216,25 @@ export function koolImportieren(state: AppState, zeilen: KoolZeile[]): { state: 
         const teil = eintrag.trim()
         if (!teil) continue
         const doppelpunkt = teil.lastIndexOf(':')
-        const teamName = (doppelpunkt >= 0 ? teil.slice(0, doppelpunkt) : teil).trim()
+        const teamName = teamNameVon(teil)
         const rolle = doppelpunkt >= 0 ? teil.slice(doppelpunkt + 1).trim() : ''
         if (!teamName) continue
 
-        let gruppe = neu.gruppen.find(g => g.name === teamName)
+        const gruppeId = optionen.teamZuordnung[teamName]
+        const gruppe = gruppeId ? neu.gruppen.find(g => g.id === gruppeId) : undefined
         if (!gruppe) {
-          gruppe = { id: neueId(), name: teamName, mitglieder: [], aktivitaeten: [] }
-          neu.gruppen.push(gruppe)
-          ergebnis.neueGruppen++
+          if (!uebersprungen.has(teamName)) {
+            uebersprungen.add(teamName)
+            ergebnis.uebersprungeneTeams++
+            ergebnis.warnungen.push(`Team «${teamName}» wurde keiner Gruppe zugeordnet — Mitgliedschaften dafür übersprungen.`)
+          }
+          continue
         }
+        // Alias für künftige Importe merken, damit dieser Team-Name automatisch erkannt wird.
+        if (gruppe.name.toLowerCase() !== teamName.toLowerCase() && !(gruppe.kOOLNamen ?? []).some(a => a.toLowerCase() === teamName.toLowerCase())) {
+          gruppe.kOOLNamen = [...(gruppe.kOOLNamen ?? []), teamName]
+        }
+
         const funktion: Funktion = LEITER_ROLLEN.includes(rolle.toLowerCase()) ? 'Leiter/in' : 'Teilnehmer/in'
         const vorhanden = gruppe.mitglieder.find(m => m.personId === person!.id)
         if (vorhanden) {
