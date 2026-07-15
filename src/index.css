@@ -182,7 +182,9 @@ label.feld input, label.feld select {
 .statusbtn.unabgemeldet.aktiv { background: var(--err-bg); border-color: var(--err-ink); color: var(--err-ink); }
 
 .foto-icon {
-  width: 48px; height: 48px; border-radius: var(--radius-md); border: 1.5px solid var(--line);
+  align-self: stretch; width: auto; aspect-ratio: 1; height: auto;
+  margin-block: calc(-0.65rem + 2px); margin-inline-start: calc(-0.25rem + 2px);
+  border-radius: var(--radius-md); border: 1.5px solid var(--line);
   object-fit: cover; flex-shrink: 0;
 }
 .foto-gross { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-lg); border: 2px solid var(--ink); }
