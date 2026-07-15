@@ -1,4 +1,4 @@
-import type { Aktivitaet, Aktivitaetstyp, AppState } from '../types'
+import type { Aktivitaet, Aktivitaetstyp, AppState, Gruppe } from '../types'
 import { neueId } from '../types'
 
 // iCal-Import: parst .ics-Feeds (z. B. Google Calendar / kOOL) und gleicht die
@@ -167,6 +167,17 @@ export function icsMergen(
     }
   }
   return { state: neu, ergebnis }
+}
+
+/**
+ * Termine, die aus einem iCal-Feed stammen, dort aber nicht mehr auftauchen (das
+ * VEVENT wurde komplett gelöscht statt auf CANCELLED gesetzt). `icsMergen` allein
+ * merkt das nicht — es sieht nur, was im Feed steht. Diese Funktion vergleicht
+ * gegen die Menge der beim Sync tatsächlich gesehenen UIDs. Bereits als «abgesagt»
+ * markierte Termine werden nicht nochmals gemeldet.
+ */
+export function verwaisteTermine(gruppe: Gruppe, gesehenUids: Set<string>): Aktivitaet[] {
+  return gruppe.aktivitaeten.filter(a => a.icalUid && a.status !== 'abgesagt' && !gesehenUids.has(a.icalUid))
 }
 
 /** Google-Calendar-URLs laufen im Dev-Modus über den Vite-Proxy (CORS). */

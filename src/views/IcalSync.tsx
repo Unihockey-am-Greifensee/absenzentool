@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import type { AppState, Aktivitaetstyp } from '../types'
+import type { AppState, Aktivitaet, Aktivitaetstyp } from '../types'
 import { neueId } from '../types'
 import type { Update } from '../App'
-import { fetchUrl, icsMergen, parseIcs, type IcsSyncErgebnis } from '../lib/icsImport'
+import { fetchUrl, icsMergen, parseIcs, verwaisteTermine, type IcsSyncErgebnis } from '../lib/icsImport'
 import { ICAL_VORLAGEN } from '../config/icalVorlagen'
+import { chDatumKurz } from './GruppeDetail'
 
 function summe(a: IcsSyncErgebnis, b: IcsSyncErgebnis): IcsSyncErgebnis {
   return {
@@ -29,12 +30,16 @@ export function KalenderSektion({ state, update, gruppeId }: { state: AppState; 
   const [meldung, setMeldung] = useState<{ art: 'info' | 'fehler'; text: string } | null>(null)
   const [neuUrl, setNeuUrl] = useState('')
   const [neuTyp, setNeuTyp] = useState<Aktivitaetstyp>('Training')
+  const [verwaist, setVerwaist] = useState<Aktivitaet[] | null>(null)
+  const [ausgewaehlt, setAusgewaehlt] = useState<Set<string>>(new Set())
 
   const synchronisieren = async () => {
     setLaeuft(true)
     setMeldung(null)
+    setVerwaist(null)
     let gesamt = LEERES_ERGEBNIS
     const fehler: string[] = []
+    const gesehenUids = new Set<string>()
     // Aktuellen Stand lokal mitführen, damit mehrere Quellen aufeinander aufbauen.
     let aktuell = state
     for (const q of quellen) {
@@ -43,6 +48,7 @@ export function KalenderSektion({ state, update, gruppeId }: { state: AppState; 
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const events = parseIcs(await res.text())
         if (events.length === 0) throw new Error('keine Termine im Feed')
+        events.forEach(e => gesehenUids.add(e.uid))
         const { state: neu, ergebnis } = icsMergen(aktuell, gruppeId, events, q.typ)
         aktuell = neu
         gesamt = summe(gesamt, ergebnis)
@@ -56,15 +62,37 @@ export function KalenderSektion({ state, update, gruppeId }: { state: AppState; 
     if (fehler.length > 0) {
       setMeldung({
         art: 'fehler',
-        text: `Feed(s) nicht ladbar (${fehler.join(' · ')}). Vermutlich blockiert der Browser den Zugriff (CORS) — lade unten die .ics-Datei manuell hoch.`,
+        text: `Feed(s) nicht ladbar (${fehler.join(' · ')}). Vermutlich blockiert der Browser den Zugriff (CORS) — lade unten die .ics-Datei manuell hoch. ` +
+          `Die Prüfung auf gelöschte Termine wurde übersprungen, solange nicht alle Quellen geladen werden konnten.`,
       })
-    } else {
-      setMeldung({
-        art: 'info',
-        text: `Sync fertig: ${gesamt.neu} neu, ${gesamt.aktualisiert} aktualisiert, ${gesamt.abgesagt} abgesagt, ${gesamt.unveraendert} unverändert` +
-          (gesamt.uebersprungen ? `, ${gesamt.uebersprungen} geschützt (bereits erfasst)` : '') + '.',
-      })
+      return
     }
+    setMeldung({
+      art: 'info',
+      text: `Sync fertig: ${gesamt.neu} neu, ${gesamt.aktualisiert} aktualisiert, ${gesamt.abgesagt} abgesagt, ${gesamt.unveraendert} unverändert` +
+        (gesamt.uebersprungen ? `, ${gesamt.uebersprungen} geschützt (bereits erfasst)` : '') + '.',
+    })
+    // Alle Quellen liefen sauber durch — jetzt prüfen, ob im Kalender gelöschte
+    // Termine noch im Tool herumliegen (icsMergen sieht nur, was im Feed steht).
+    const gruppeNeu = fertig.gruppen.find(g => g.id === gruppeId)!
+    const verwaisteListe = verwaisteTermine(gruppeNeu, gesehenUids)
+    if (verwaisteListe.length > 0) {
+      setVerwaist(verwaisteListe)
+      setAusgewaehlt(new Set(
+        verwaisteListe.filter(a => a.status === 'geplant').map(a => a.id)
+      ))
+    }
+  }
+
+  const verwaisteLoeschen = () => {
+    update(s => {
+      const n = structuredClone(s)
+      const g = n.gruppen.find(g => g.id === gruppeId)!
+      g.aktivitaeten = g.aktivitaeten.filter(a => !ausgewaehlt.has(a.id))
+      return n
+    })
+    setMeldung({ art: 'info', text: `${ausgewaehlt.size} Termin(e) gelöscht, da im Kalender nicht mehr vorhanden.` })
+    setVerwaist(null)
   }
 
   const icsDatei = async (file: File, typ: Aktivitaetstyp) => {
@@ -103,6 +131,42 @@ export function KalenderSektion({ state, update, gruppeId }: { state: AppState; 
           </div>
         )}
         {meldung && <div className={`hinweis ${meldung.art}`}>{meldung.text}</div>}
+
+        {verwaist && verwaist.length > 0 && (
+          <div className="hinweis warnung">
+            <b>{verwaist.length} Termin(e) sind im Kalender nicht mehr vorhanden.</b>
+            <p style={{ margin: '0.3rem 0' }}>
+              Vermutlich wurden sie dort gelöscht oder verschoben. Sollen sie auch im Tool entfernt werden?
+            </p>
+            <div className="karte" style={{ padding: '0.2rem 1rem', margin: '0.6rem 0', background: 'var(--surface)' }}>
+              {verwaist.map(a => {
+                const hatAnwesenheit = Object.values(a.anwesenheit).some(Boolean)
+                return (
+                  <div key={a.id} className="zeile" style={{ cursor: 'pointer' }} onClick={() =>
+                    setAusgewaehlt(s => {
+                      const n = new Set(s)
+                      n.has(a.id) ? n.delete(a.id) : n.add(a.id)
+                      return n
+                    })
+                  }>
+                    <span className={'check' + (ausgewaehlt.has(a.id) ? ' an' : '')}>✓</span>
+                    <div className="haupt">
+                      <div className="titel">{chDatumKurz(a.datum)} · {a.typ}</div>
+                      <div className="sub">{[a.zeit, a.ort, a.titel].filter(Boolean).join(' · ') || '—'}</div>
+                    </div>
+                    {hatAnwesenheit && <span className="pill offen">Anwesenheit erfasst</span>}
+                  </div>
+                )
+              })}
+            </div>
+            <div className="btnreihe" style={{ marginBottom: 0 }}>
+              <button onClick={verwaisteLoeschen} disabled={ausgewaehlt.size === 0}>
+                Ausgewählte löschen ({ausgewaehlt.size})
+              </button>
+              <button className="leise" onClick={() => setVerwaist(null)}>Keine löschen</button>
+            </div>
+          </div>
+        )}
 
         <h2 className="abschnitt">Quelle hinzufügen</h2>
         <label className="feld">iCal-Link (.ics)
