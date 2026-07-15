@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { AppState } from '../types'
-import { Seite, useBenutzer } from '../App'
+import { Seite } from '../App'
 import { ndsExport, type ExportResultat } from '../lib/ndsExport'
 
 function saisonStart(): string {
@@ -14,7 +14,6 @@ function saisonEnde(): string {
 }
 
 export function ExportView({ state }: { state: AppState }) {
-  const benutzer = useBenutzer()
   const [von, setVon] = useState(saisonStart())
   const [bis, setBis] = useState(saisonEnde())
   const [gewaehlt, setGewaehlt] = useState<string[]>(state.gruppen.map(g => g.id))
@@ -39,14 +38,7 @@ export function ExportView({ state }: { state: AppState }) {
   const warnungen = resultat?.befunde.filter(b => b.stufe === 'warnung') ?? []
 
   return (
-    <Seite titel="Admin" tab="export">
-      {benutzer.rolle === 'master' && (
-        <div className="btnreihe" style={{ marginTop: 0 }}>
-          <a className="btn sekundaer breit" href="#/trainer">Trainer-Verwaltung</a>
-        </div>
-      )}
-
-      <h2 className="abschnitt" style={{ marginTop: 0 }}>NDS-Export</h2>
+    <Seite titel="NDS-Export" zurueck="export" tab="export">
       <div className="karte">
         <div className="felder2">
           <label className="feld">Von<input type="date" value={von} onChange={e => { setVon(e.target.value); setResultat(null) }} /></label>
