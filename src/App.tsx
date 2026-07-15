@@ -21,6 +21,7 @@ export interface Benutzer {
   rolle: 'master' | 'trainer' | 'lokal'
   email?: string
   name?: string
+  fotoRecht?: boolean // Trainer darf Personen-Fotos hochladen/löschen (Admin darf immer)
 }
 
 export const BenutzerContext = createContext<Benutzer>({ rolle: 'lokal' })
@@ -107,7 +108,7 @@ function SyncApp({ info }: { info: TrainerInfo }) {
   }
   if (!state) return <LadeAnzeige text="Lade Daten …" />
   return (
-    <BenutzerContext.Provider value={{ rolle: info.rolle, email: info.email, name: info.name }}>
+    <BenutzerContext.Provider value={{ rolle: info.rolle, email: info.email, name: info.name, fotoRecht: info.fotoRecht }}>
       <Router state={state} update={update} />
     </BenutzerContext.Provider>
   )

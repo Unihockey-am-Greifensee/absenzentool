@@ -3,6 +3,7 @@ import { Seite, useBenutzer, type Update } from '../App'
 import { chDatumKurz } from './GruppeDetail'
 import { aktiveMitglieder, statusVon } from '../lib/mitglieder'
 import { terminGeschwister } from '../lib/termine'
+import { neuestesFoto } from '../lib/saison'
 
 export function TerminDetail({ state, update, gruppeId, terminId }: {
   state: AppState; update: Update; gruppeId: string; terminId: string
@@ -69,18 +70,21 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
       ) : (
         <>
           <div className="btnreihe">
-            <button className="sekundaer" onClick={() => mutiere(a => {
+            <button className="sekundaer" disabled={termin.abgeschlossen} onClick={() => mutiere(a => {
               for (const m of mitglieder) a.anwesenheit[m.personId] = true
               a.status = 'durchgefuehrt'
             })}>Alle anwesend</button>
-            <button className="leise" onClick={() => mutiere(a => { a.anwesenheit = {}; a.status = 'geplant' })}>Zurücksetzen</button>
-            <button className="leise" onClick={() => {
+            <button className="leise" disabled={termin.abgeschlossen} onClick={() => mutiere(a => { a.anwesenheit = {}; a.status = 'geplant' })}>Zurücksetzen</button>
+            <button className="leise" disabled={termin.abgeschlossen} onClick={() => {
               if (confirm('Termin als abgesagt markieren? Er erscheint dann nicht im Export.')) {
                 mutiere(a => { a.status = 'abgesagt'; a.abgeschlossen = true })
               }
             }}>Training abgesagt</button>
           </div>
-          <div className="hinweis info">{anwesend} von {mitglieder.length} anwesend — Antippen zum Abhaken.</div>
+          <div className="hinweis info">
+            {anwesend} von {mitglieder.length} anwesend
+            {termin.abgeschlossen ? ' — abgeschlossen, «Wieder öffnen» zum Bearbeiten.' : ' — Antippen zum Abhaken.'}
+          </div>
         </>
       )}
 
@@ -89,10 +93,13 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
           const p = personById.get(m.personId)
           if (!p) return null
           const an = !!termin.anwesenheit[m.personId]
+          const gesperrt = termin.status === 'abgesagt' || !!termin.abgeschlossen
+          const foto = neuestesFoto(state.fotos, m.personId)
           return (
-            <div key={m.personId} className="zeile" style={{ cursor: 'pointer' }}
-              onClick={() => termin.status !== 'abgesagt' && toggle(m.personId)}>
+            <div key={m.personId} className="zeile" style={{ cursor: gesperrt ? 'default' : 'pointer', opacity: termin.abgeschlossen ? 0.6 : 1 }}
+              onClick={() => !gesperrt && toggle(m.personId)}>
               <span className={'check' + (an ? ' an' : '')}>✓</span>
+              {foto && <img src={foto.datenUrl} alt="" className="foto-icon" />}
               <div className="haupt">
                 <div className="titel">{p.vorname} {p.nachname}</div>
                 {m.funktion === 'Leiter/in' && <div className="sub">{m.rolle ?? 'Leiter/in'}</div>}

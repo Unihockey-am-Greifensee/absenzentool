@@ -3,7 +3,7 @@ import {
   type DocumentData, type QuerySnapshot,
 } from 'firebase/firestore'
 import { db } from '../firebase'
-import type { Aktivitaet, AppState, Gruppe, Person } from '../types'
+import type { Aktivitaet, AppState, Foto, Gruppe, Person } from '../types'
 
 // Firestore-Spiegel des AppState.
 //
@@ -21,6 +21,7 @@ export interface TrainerInfo {
   email: string
   rolle: 'master' | 'trainer'
   name?: string
+  fotoRecht?: boolean // Trainer darf Personen-Fotos hochladen/löschen
 }
 
 export interface GruppeMeta {
@@ -58,11 +59,12 @@ export function abonnieren(
   const vertraulich = new Map<string, Vertraulich>()
   const gruppen = new Map<string, Gruppe & GruppeMeta>()
   const aktivitaeten = new Map<string, Map<string, Aktivitaet>>() // gruppeId -> id -> Aktivitaet
+  const fotos = new Map<string, Foto>()
 
-  const bereit = { personen: false, gruppen: false, akt: false, vertraulich: !istMaster }
+  const bereit = { personen: false, gruppen: false, akt: false, vertraulich: !istMaster, fotos: false }
 
   const melden = () => {
-    if (!bereit.personen || !bereit.gruppen || !bereit.akt || !bereit.vertraulich) return
+    if (!bereit.personen || !bereit.gruppen || !bereit.akt || !bereit.vertraulich || !bereit.fotos) return
     const staat: AppState = {
       personen: [...personen.values()].map(p => ({ ...p, ...(vertraulich.get(p.id) ?? {}) })),
       gruppen: [...gruppen.values()]
@@ -71,6 +73,7 @@ export function abonnieren(
           aktivitaeten: [...(aktivitaeten.get(g.id)?.values() ?? [])],
         }))
         .sort((a, b) => a.name.localeCompare(b.name, 'de')),
+      fotos: [...fotos.values()],
     }
     aufState(staat)
   }
@@ -103,6 +106,13 @@ export function abonnieren(
       bereit.akt = true
       melden()
     }, fehler('aktivitaeten')),
+
+    onSnapshot(collection(db, 'fotos'), snap => {
+      fotos.clear()
+      snap.forEach(d => fotos.set(d.id, { ...(d.data() as Foto), id: d.id }))
+      bereit.fotos = true
+      melden()
+    }, fehler('fotos')),
   ]
 
   if (istMaster) {
@@ -172,6 +182,18 @@ export async function diffSchreiben(alt: AppState, neu: AppState, istMaster: boo
     }
   }
 
+  // --- Fotos ---
+  const altF = new Map(alt.fotos.map(f => [f.id, f]))
+  const neuF = new Map(neu.fotos.map(f => [f.id, f]))
+  for (const [id, f] of neuF) {
+    const vorher = altF.get(id)
+    if (vorher && JSON.stringify(vorher) === JSON.stringify(f)) continue
+    batch.set.push({ pfad: ['fotos', id], daten: ohneUndefined({ ...f }) })
+  }
+  for (const id of altF.keys()) {
+    if (!neuF.has(id)) batch.del.push(['fotos', id])
+  }
+
   // In 450er-Blöcken schreiben (Firestore-Limit: 500 Operationen pro Batch).
   const ops = [
     ...batch.set.map(s => ({ art: 'set' as const, ...s })),
@@ -199,7 +221,7 @@ export function trainerAbonnieren(
     () => auf(null))
 }
 
-export async function trainerSpeichern(email: string, daten: { rolle: 'master' | 'trainer'; name?: string }): Promise<void> {
+export async function trainerSpeichern(email: string, daten: { rolle: 'master' | 'trainer'; name?: string; fotoRecht?: boolean }): Promise<void> {
   if (!db) return
   await setDoc(doc(db, 'trainer', email.toLowerCase()), ohneUndefined(daten))
 }

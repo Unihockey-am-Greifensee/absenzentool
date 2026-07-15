@@ -37,6 +37,11 @@ service cloud.firestore {
       return istMaster()
         || mail() in get(/databases/$(database)/documents/gruppen/$(gruppeId)).data.get('trainerEmails', []);
     }
+    function darfFotos() {
+      return istMaster()
+        || (istTrainer()
+            && get(/databases/$(database)/documents/trainer/$(mail())).data.get('fotoRecht', false) == true);
+    }
 
     match /trainer/{email} {
       allow read: if istTrainer();
@@ -72,6 +77,13 @@ service cloud.firestore {
     // Lesezugriff auf alle Aktivitäten (auch via collectionGroup-Abfrage).
     match /{pfad=**}/aktivitaeten/{aktivitaetId} {
       allow read: if istTrainer();
+    }
+
+    match /fotos/{id} {
+      // Foto-Recht ist eine eigene Freigabe pro Trainer (trainer/{email}.fotoRecht),
+      // unabhängig von der Gruppenzuteilung.
+      allow read: if istTrainer();
+      allow write: if darfFotos();
     }
   }
 }

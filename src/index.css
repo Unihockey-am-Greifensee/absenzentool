@@ -167,6 +167,14 @@ label.feld input, label.feld select {
 }
 .check.an { background: var(--accent); border-color: var(--accent); color: var(--ink); }
 
+.foto-icon {
+  width: 34px; height: 34px; border-radius: var(--radius-md); border: 1.5px solid var(--line);
+  object-fit: cover; flex-shrink: 0;
+}
+.foto-gross { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-lg); border: 2px solid var(--ink); }
+
+.feld-anzeige { display: block; padding-top: 0.25rem; color: var(--ink); font-weight: 600; min-height: 1.4em; }
+
 .hinweis { border-radius: var(--radius-md); padding: 0.7rem 0.9rem; font-size: 0.85rem; margin: 0.75rem 0; }
 .hinweis.warnung { background: var(--warn-bg); color: var(--warn-ink); }
 .hinweis.fehler { background: var(--err-bg); color: var(--err-ink); }

@@ -21,6 +21,13 @@ export function TrainerAdmin({ eigeneEmail }: { eigeneEmail: string }) {
             <div className="haupt">
               <div className="titel">{t.name || t.email}</div>
               <div className="sub">{t.email}</div>
+              {t.rolle === 'trainer' && (
+                <label className="sub" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.3rem', fontWeight: 700 }}>
+                  <input type="checkbox" checked={!!t.fotoRecht}
+                    onChange={e => trainerSpeichern(t.email, { rolle: t.rolle, name: t.name, fotoRecht: e.target.checked || undefined })} />
+                  Foto-Recht
+                </label>
+              )}
             </div>
             {t.rolle === 'master' && <span className="pill leiter">Admin</span>}
             {t.email !== eigeneEmail.toLowerCase() && (

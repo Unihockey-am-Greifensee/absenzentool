@@ -49,6 +49,14 @@ export interface Aktivitaet {
   // Übersichts-Einteilung (Aktuell/Abgeschlossen), unabhängig von status/NDS-Export
 }
 
+export interface Foto {
+  id: string
+  personId: string
+  saison: string // z. B. "2025/26" — Saison Mai bis April, siehe lib/saison.ts
+  datenUrl: string // Base64 data: URL, clientseitig komprimiert
+  hochgeladenAm: string // ISO-Zeitstempel
+}
+
 export interface IcalQuelle {
   url: string
   typ: Aktivitaetstyp // Standard-Typ, falls der Titel nichts anderes verrät
@@ -69,9 +77,10 @@ export interface Gruppe {
 export interface AppState {
   personen: Person[]
   gruppen: Gruppe[]
+  fotos: Foto[]
 }
 
-export const LEER: AppState = { personen: [], gruppen: [] }
+export const LEER: AppState = { personen: [], gruppen: [], fotos: [] }
 
 export function neueId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)

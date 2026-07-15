@@ -3,6 +3,8 @@ import type { AppState, Person } from '../types'
 import { neueId } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
 import { statusVon } from '../lib/mitglieder'
+import { aktuelleSaison, fotosVonPerson } from '../lib/saison'
+import { komprimiertesFoto } from '../lib/foto'
 
 export function PersonenListe({ state }: { state: AppState }) {
   const benutzer = useBenutzer()
@@ -50,7 +52,7 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
   const [p, setP] = useState<Person>(
     vorhanden ?? { id: neueId(), vorname: '', nachname: '', quelle: 'manuell', land: 'CH', nationalitaet: 'CH', muttersprache: 'DE' }
   )
-  const [tab, setTab] = useState<'angaben' | 'gruppen'>('angaben')
+  const [tab, setTab] = useState<'angaben' | 'gruppen' | 'fotos'>('angaben')
 
   if (!istNeu && !vorhanden) {
     return <Seite titel="Person nicht gefunden" zurueck="personen" tab="personen"><div className="leer">Diese Person existiert nicht (mehr).</div></Seite>
@@ -80,60 +82,65 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
     window.location.hash = '#/personen'
   }
 
+  const geschlechtAnzeige = p.geschlecht === 'm' ? 'männlich' : p.geschlecht === 'w' ? 'weiblich' : ''
+  const F = ({ label, anzeige, children }: { label: string; anzeige: string; children: React.ReactNode }) => (
+    <label className="feld">{label}
+      {istTrainer ? <span className="feld-anzeige">{anzeige || '—'}</span> : children}
+    </label>
+  )
+
   return (
     <Seite titel={istNeu ? 'Neue Person' : `${p.vorname} ${p.nachname}`} zurueck="personen" tab="personen">
       {!istNeu && (
         <div className="btnreihe" style={{ marginTop: 0 }}>
           <button className={tab === 'angaben' ? '' : 'sekundaer'} onClick={() => setTab('angaben')}>Angaben</button>
           <button className={tab === 'gruppen' ? '' : 'sekundaer'} onClick={() => setTab('gruppen')}>Gruppen</button>
+          <button className={tab === 'fotos' ? '' : 'sekundaer'} onClick={() => setTab('fotos')}>Fotos</button>
         </div>
       )}
 
       {tab === 'angaben' && (
         <>
-          {p.quelle === 'kool' && (
+          {p.quelle === 'kool' && !istTrainer && (
             <div className="hinweis info">Diese Person stammt aus dem kOOL-Import. Änderungen werden beim nächsten Import durch kOOL-Werte ergänzt, nicht überschrieben.</div>
-          )}
-          {istTrainer && (
-            <div className="hinweis info">Diese Angaben kann nur der Admin ändern.</div>
           )}
           <div className="karte">
             <div className="felder2">
-              <label className="feld">Vorname<input {...feld('vorname')} /></label>
-              <label className="feld">Nachname<input {...feld('nachname')} /></label>
-              <label className="feld">Geburtsdatum<input type="date" {...feld('geburtsdatum')} /></label>
-              <label className="feld">Geschlecht
+              <F label="Vorname" anzeige={p.vorname}><input {...feld('vorname')} /></F>
+              <F label="Nachname" anzeige={p.nachname}><input {...feld('nachname')} /></F>
+              <F label="Geburtsdatum" anzeige={p.geburtsdatum ?? ''}><input type="date" {...feld('geburtsdatum')} /></F>
+              <F label="Geschlecht" anzeige={geschlechtAnzeige}>
                 <select {...feld('geschlecht')}>
                   <option value="">—</option><option value="m">männlich</option><option value="w">weiblich</option>
                 </select>
-              </label>
+              </F>
             </div>
             <h2 className="abschnitt">Jugend+Sport</h2>
             <div className="felder2">
-              <label className="feld">J+S-Personennummer<input {...feld('jsNummer')} placeholder="z. B. 2837521" /></label>
+              <F label="J+S-Personennummer" anzeige={p.jsNummer ?? ''}><input {...feld('jsNummer')} placeholder="z. B. 2837521" /></F>
               {!istTrainer && <>
                 <label className="feld">AHV-Nummer<input {...feld('ahvNr')} placeholder="756.…" /></label>
                 <label className="feld">PEID (nur FL)<input {...feld('peid')} /></label>
               </>}
-              <label className="feld">Nationalität
+              <F label="Nationalität" anzeige={p.nationalitaet ?? ''}>
                 <select {...feld('nationalitaet')}>
                   <option value="CH">CH</option><option value="FL">FL</option><option value="Andere">Andere</option>
                 </select>
-              </label>
-              <label className="feld">Muttersprache
+              </F>
+              <F label="Muttersprache" anzeige={p.muttersprache ?? ''}>
                 <select {...feld('muttersprache')}>
                   <option value="DE">DE</option><option value="FR">FR</option><option value="IT">IT</option><option value="Andere">Andere</option>
                 </select>
-              </label>
+              </F>
             </div>
             <h2 className="abschnitt">Adresse</h2>
             <div className="felder2">
-              <label className="feld">Strasse<input {...feld('strasse')} /></label>
-              <label className="feld">Hausnummer<input {...feld('hausnummer')} /></label>
-              <label className="feld">PLZ<input {...feld('plz')} /></label>
-              <label className="feld">Ort<input {...feld('ort')} /></label>
-              <label className="feld">Land (ISO)<input {...feld('land')} placeholder="CH" /></label>
-              <label className="feld">E-Mail<input {...feld('email')} /></label>
+              <F label="Strasse" anzeige={p.strasse ?? ''}><input {...feld('strasse')} /></F>
+              <F label="Hausnummer" anzeige={p.hausnummer ?? ''}><input {...feld('hausnummer')} /></F>
+              <F label="PLZ" anzeige={p.plz ?? ''}><input {...feld('plz')} /></F>
+              <F label="Ort" anzeige={p.ort ?? ''}><input {...feld('ort')} /></F>
+              <F label="Land (ISO)" anzeige={p.land ?? ''}><input {...feld('land')} placeholder="CH" /></F>
+              <F label="E-Mail" anzeige={p.email ?? ''}><input {...feld('email')} /></F>
             </div>
             {!istTrainer && <button className="breit" onClick={speichern}>Speichern</button>}
           </div>
@@ -141,6 +148,7 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
       )}
 
       {tab === 'gruppen' && !istNeu && <PersonGruppen state={state} update={update} person={p} />}
+      {tab === 'fotos' && !istNeu && <PersonFotos state={state} update={update} person={p} />}
     </Seite>
   )
 }
@@ -186,6 +194,59 @@ function PersonGruppen({ state, update, person }: { state: AppState; update: Upd
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function PersonFotos({ state, update, person }: { state: AppState; update: Update; person: Person }) {
+  const benutzer = useBenutzer()
+  const darfBearbeiten = benutzer.rolle !== 'trainer' || !!benutzer.fotoRecht
+  const [lädt, setLädt] = useState(false)
+  const fotos = fotosVonPerson(state.fotos, person.id)
+  const saison = aktuelleSaison()
+
+  const hochladen = async (datei: File) => {
+    setLädt(true)
+    try {
+      const datenUrl = await komprimiertesFoto(datei)
+      update(s => {
+        const n = structuredClone(s)
+        n.fotos = n.fotos.filter(f => !(f.personId === person.id && f.saison === saison))
+        n.fotos.push({ id: neueId(), personId: person.id, saison, datenUrl, hochgeladenAm: new Date().toISOString() })
+        return n
+      })
+    } catch {
+      alert('Foto konnte nicht verarbeitet werden.')
+    } finally {
+      setLädt(false)
+    }
+  }
+
+  const löschen = (fotoId: string) =>
+    update(s => ({ ...s, fotos: s.fotos.filter(f => f.id !== fotoId) }))
+
+  return (
+    <div>
+      {darfBearbeiten && (
+        <div className="karte">
+          <label className="feld">Neues Foto für Saison {saison}
+            <input type="file" accept="image/*" disabled={lädt}
+              onChange={e => { const f = e.target.files?.[0]; if (f) void hochladen(f); e.target.value = '' }} />
+          </label>
+          {lädt && <div className="sub">Wird verarbeitet …</div>}
+        </div>
+      )}
+      {fotos.length === 0 && <div className="leer">Noch keine Fotos erfasst.</div>}
+      {fotos.map(f => (
+        <div key={f.id} className="karte">
+          <div className="sub" style={{ marginBottom: '0.5rem' }}>Saison {f.saison}</div>
+          <img src={f.datenUrl} alt="" className="foto-gross" />
+          {darfBearbeiten && (
+            <button className="leise breit" style={{ marginTop: '0.6rem' }}
+              onClick={() => { if (confirm('Dieses Foto löschen?')) löschen(f.id) }}>Löschen</button>
+          )}
+        </div>
+      ))}
     </div>
   )
 }

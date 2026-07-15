@@ -12,6 +12,7 @@ export function loadState(): AppState {
     if (!raw) return LEER
     const parsed = JSON.parse(raw) as AppState
     if (!Array.isArray(parsed.personen) || !Array.isArray(parsed.gruppen)) return LEER
+    if (!Array.isArray(parsed.fotos)) parsed.fotos = []
     return parsed
   } catch {
     return LEER
