@@ -159,8 +159,8 @@ export function icsMergen(
       continue
     }
 
-    // Manuell angefasste Termine (Anwesenheit erfasst oder abgesagt) nicht verändern.
-    if (vorhanden.status !== 'geplant') { ergebnis.uebersprungen++; continue }
+    // Manuell angefasste Termine (Anwesenheit erfasst, abgesagt oder abgeschlossen) nicht verändern.
+    if (vorhanden.status !== 'geplant' || vorhanden.abgeschlossen) { ergebnis.uebersprungen++; continue }
 
     if (abgesagt) {
       vorhanden.status = 'abgesagt'

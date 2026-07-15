@@ -11,13 +11,13 @@ Anwesenheitskontrolle und J+S-Export (BASPO/NDS) für Unihockey am Greifensee (G
 - **Anwesenheitserfassung:** mobil-optimiert, offlinefähig (Firestore-Cache), Termine einzeln oder als Wochenserie
 - **NDS-Export:** die drei Import-CSVs (Personen, Aktivitäten, Anwesenheitskontrolle) exakt nach den offiziellen
   BASPO-Anleitungen, mit Format- und Vollständigkeits-Check vor dem Download
-- **Rollen:** Master (alles) und Trainer (nur zugeteilte Gruppen); Google-Login mit Freischaltliste
+- **Rollen:** Admin (alles) und Trainer (nur zugeteilte Gruppen); Google-Login mit Freischaltliste
 
 ## Technik
 
 - React + TypeScript + Vite, Deployment auf GitHub Pages (`gh-pages`-Branch)
 - Firebase: Authentication (Google) + Firestore (Region Zürich), Regeln in [`firestore.rules`](firestore.rules)
-- AHV-Nr./PEID liegen in einer separaten Collection und sind nur für Master-Konten lesbar
+- AHV-Nr./PEID liegen in einer separaten Collection und sind nur für Admin-Konten lesbar
 
 ## Entwicklung
 

@@ -57,7 +57,7 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
   }
   if (istNeu && istTrainer) {
     return <Seite titel="Neue Person" zurueck="personen" tab="personen">
-      <div className="leer">Neue Personen erfasst nur der Master — wende dich an die Absenzen-Verantwortung.</div>
+      <div className="leer">Neue Personen erfasst nur der Admin — wende dich an die Absenzen-Verantwortung.</div>
     </Seite>
   }
 
@@ -95,7 +95,7 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
             <div className="hinweis info">Diese Person stammt aus dem kOOL-Import. Änderungen werden beim nächsten Import durch kOOL-Werte ergänzt, nicht überschrieben.</div>
           )}
           {istTrainer && (
-            <div className="hinweis info">Diese Angaben kann nur der Master ändern.</div>
+            <div className="hinweis info">Diese Angaben kann nur der Admin ändern.</div>
           )}
           <div className="karte">
             <div className="felder2">

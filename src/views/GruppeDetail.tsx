@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { AppState, Aktivitaet, Aktivitaetstyp, Funktion, Mitglied, MitgliedStatus, Person } from '../types'
+import type { AppState, Aktivitaet, Aktivitaetstyp, Funktion, Gruppe, Mitglied, MitgliedStatus, Person } from '../types'
 import { neueId } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
 import { heute } from '../lib/datum'
@@ -7,6 +7,7 @@ import { DAUER_TRAINING, DAUER_TRAININGSTAG } from '../lib/ndsExport'
 import { KalenderSektion } from './IcalSync'
 import { useTrainerListe } from '../lib/useTrainerListe'
 import { aktiveMitglieder, hatAnwesenheit, statusVon } from '../lib/mitglieder'
+import { terminGruppen, type TerminGruppe } from '../lib/termine'
 
 const WOCHENTAGE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 
@@ -21,8 +22,6 @@ export function GruppeDetail({ state, update, gruppeId }: { state: AppState; upd
   const [zeigeNeu, setZeigeNeu] = useState(false)
   if (!gruppe) return <Seite titel="Gruppe nicht gefunden" zurueck="" tab="gruppen"><div className="leer">Diese Gruppe existiert nicht (mehr).</div></Seite>
 
-  const sortiert = [...gruppe.aktivitaeten].sort((a, b) => b.datum.localeCompare(a.datum) || (b.zeit ?? '').localeCompare(a.zeit ?? ''))
-
   return (
     <Seite titel={gruppe.name} zurueck="" tab="gruppen">
       <div className="btnreihe">
@@ -33,27 +32,72 @@ export function GruppeDetail({ state, update, gruppeId }: { state: AppState; upd
       <KalenderSektion state={state} update={update} gruppeId={gruppe.id} />
       <TrainerZuteilung state={state} update={update} gruppeId={gruppe.id} />
 
-      <h2 className="abschnitt">Termine</h2>
-      {sortiert.length === 0 && <div className="leer">Noch keine Termine. Lege oben Trainings an — einzeln oder als Wochenserie.</div>}
-      <div className="karte" style={{ padding: '0.2rem 1rem' }}>
-        {sortiert.map(a => {
-          const anwesend = Object.values(a.anwesenheit).filter(Boolean).length
-          return (
-            <a key={a.id} className="zeile" href={`#/gruppe/${gruppe.id}/termin/${a.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-              <div className="haupt">
-                <div className="titel">{chDatumKurz(a.datum)} · {a.typ}</div>
-                <div className="sub">{[a.zeit, a.dauer && a.dauer + ' Min.', a.ort, a.titel].filter(Boolean).join(' · ') || '—'}</div>
-              </div>
-              {a.status === 'abgesagt' && <span className="pill abgesagt">abgesagt</span>}
-              {a.status === 'durchgefuehrt' && <span className="pill ok">{anwesend}/{aktiveMitglieder(gruppe).length} ✓</span>}
-              {a.status === 'geplant' && <span className="pill offen">offen</span>}
-            </a>
-          )
-        })}
-      </div>
+      <TermineSektionen gruppe={gruppe} />
 
       <MitgliederSektionen state={state} update={update} gruppeId={gruppe.id} />
     </Seite>
+  )
+}
+
+function terminZeile(gruppe: Gruppe, t: TerminGruppe) {
+  const a = t.haupt
+  const anwesend = Object.values(a.anwesenheit).filter(Boolean).length
+  return (
+    <a key={a.id} className="zeile" href={`#/gruppe/${gruppe.id}/termin/${a.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+      <div className="haupt">
+        <div className="titel">{chDatumKurz(a.datum)} · {a.typ}{t.alle.length > 1 && ` (${t.alle.length} Spiele)`}</div>
+        <div className="sub">{[a.zeit, a.dauer && a.dauer + ' Min.', a.ort, a.titel].filter(Boolean).join(' · ') || '—'}</div>
+      </div>
+      {a.status === 'abgesagt' && <span className="pill abgesagt">abgesagt</span>}
+      {a.status !== 'abgesagt' && a.status === 'durchgefuehrt' && <span className="pill ok">{anwesend}/{aktiveMitglieder(gruppe).length} ✓</span>}
+      {a.status === 'geplant' && <span className="pill offen">offen</span>}
+    </a>
+  )
+}
+
+function TermineSektionen({ gruppe }: { gruppe: Gruppe }) {
+  const [alleAktuelle, setAlleAktuelle] = useState(false)
+  const [alleAbgeschlossene, setAlleAbgeschlossene] = useState(false)
+
+  const gruppen = terminGruppen(gruppe)
+  if (gruppen.length === 0) {
+    return (
+      <>
+        <h2 className="abschnitt">Termine</h2>
+        <div className="leer">Noch keine Termine. Lege oben Trainings an — einzeln oder als Wochenserie.</div>
+      </>
+    )
+  }
+
+  const aktuelle = gruppen.filter(t => !t.haupt.abgeschlossen)
+    .sort((a, b) => a.haupt.datum.localeCompare(b.haupt.datum) || (a.haupt.zeit ?? '').localeCompare(b.haupt.zeit ?? ''))
+  const abgeschlossene = gruppen.filter(t => t.haupt.abgeschlossen)
+    .sort((a, b) => b.haupt.datum.localeCompare(a.haupt.datum) || (b.haupt.zeit ?? '').localeCompare(a.haupt.zeit ?? ''))
+
+  return (
+    <>
+      <h2 className="abschnitt">Aktuelle Termine</h2>
+      {aktuelle.length === 0 && <div className="sub" style={{ padding: '0 0.25rem 0.5rem' }}>Keine offenen Termine.</div>}
+      {aktuelle.length > 0 && (
+        <div className="karte" style={{ padding: '0.2rem 1rem' }}>
+          {(alleAktuelle ? aktuelle : aktuelle.slice(0, 5)).map(t => terminZeile(gruppe, t))}
+        </div>
+      )}
+      {!alleAktuelle && aktuelle.length > 5 && (
+        <div className="btnreihe"><button className="leise breit" onClick={() => setAlleAktuelle(true)}>{aktuelle.length - 5} weitere anzeigen</button></div>
+      )}
+
+      <h2 className="abschnitt">Abgeschlossene Termine</h2>
+      {abgeschlossene.length === 0 && <div className="sub" style={{ padding: '0 0.25rem 0.5rem' }}>Noch keine abgeschlossenen Termine.</div>}
+      {abgeschlossene.length > 0 && (
+        <div className="karte" style={{ padding: '0.2rem 1rem' }}>
+          {(alleAbgeschlossene ? abgeschlossene : abgeschlossene.slice(0, 5)).map(t => terminZeile(gruppe, t))}
+        </div>
+      )}
+      {!alleAbgeschlossene && abgeschlossene.length > 5 && (
+        <div className="btnreihe"><button className="leise breit" onClick={() => setAlleAbgeschlossene(true)}>{abgeschlossene.length - 5} weitere anzeigen</button></div>
+      )}
+    </>
   )
 }
 

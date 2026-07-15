@@ -45,6 +45,8 @@ export interface Aktivitaet {
   status: AktivitaetsStatus
   anwesenheit: Record<string, boolean> // personId -> anwesend
   icalUid?: string // gesetzt, wenn der Termin aus einem iCal-Feed stammt
+  abgeschlossen?: boolean // Trainer hat den Termin bewusst abgeschlossen — steuert nur die
+  // Übersichts-Einteilung (Aktuell/Abgeschlossen), unabhängig von status/NDS-Export
 }
 
 export interface IcalQuelle {

@@ -1,16 +1,23 @@
 import type { Aktivitaet, AppState } from '../types'
-import { Seite, type Update } from '../App'
+import { Seite, useBenutzer, type Update } from '../App'
 import { chDatumKurz } from './GruppeDetail'
 import { aktiveMitglieder, statusVon } from '../lib/mitglieder'
+import { terminGeschwister } from '../lib/termine'
 
 export function TerminDetail({ state, update, gruppeId, terminId }: {
   state: AppState; update: Update; gruppeId: string; terminId: string
 }) {
+  const benutzer = useBenutzer()
+  const istAdmin = benutzer.rolle !== 'trainer'
   const gruppe = state.gruppen.find(g => g.id === gruppeId)
   const termin = gruppe?.aktivitaeten.find(a => a.id === terminId)
   if (!gruppe || !termin) {
     return <Seite titel="Termin nicht gefunden" zurueck="" tab="gruppen"><div className="leer">Dieser Termin existiert nicht (mehr).</div></Seite>
   }
+  const geschwister = terminGeschwister(gruppe, termin)
+  const geschwisterIds = geschwister.map(a => a.id)
+  const mehrereSpiele = geschwister.length > 1
+
   const personById = new Map(state.personen.map(p => [p.id, p]))
   const mitglieder = aktiveMitglieder(gruppe).sort((a, b) => {
     if (a.funktion !== b.funktion) return a.funktion === 'Leiter/in' ? -1 : 1
@@ -19,11 +26,16 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
   })
   const anwesend = Object.values(termin.anwesenheit).filter(Boolean).length
 
+  // Wirkt auf alle Geschwister eines Wettkampf-Tages gleichzeitig (siehe lib/termine.ts) —
+  // dadurch reicht EINE Anwesenheitserfassung für z. B. zwei Spiele am selben Tag.
   const mutiere = (fn: (a: Aktivitaet) => void) =>
     update(s => {
       const n = structuredClone(s)
-      const a = n.gruppen.find(g => g.id === gruppeId)!.aktivitaeten.find(x => x.id === terminId)!
-      fn(a)
+      const g = n.gruppen.find(g => g.id === gruppeId)!
+      for (const id of geschwisterIds) {
+        const a = g.aktivitaeten.find(x => x.id === id)
+        if (a) fn(a)
+      }
       return n
     })
 
@@ -38,12 +50,20 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
       <div className="sub" style={{ margin: '-0.5rem 0 0.75rem', color: 'var(--muted)' }}>
         {gruppe.name} · {[termin.zeit, termin.dauer && termin.dauer + ' Min.', termin.ort, termin.titel].filter(Boolean).join(' · ') || 'ohne Details'}
       </div>
+      {mehrereSpiele && (
+        <div className="hinweis info">
+          {geschwister.length} Spiele am {chDatumKurz(termin.datum)} — die Anwesenheit gilt für beide gemeinsam.
+        </div>
+      )}
 
       {termin.status === 'abgesagt' ? (
         <div className="hinweis warnung">
           Dieser Termin ist als <b>abgesagt</b> markiert und erscheint nicht im Export.
           <div className="btnreihe" style={{ marginBottom: 0 }}>
-            <button className="sekundaer" onClick={() => mutiere(a => { a.status = anwesend > 0 ? 'durchgefuehrt' : 'geplant' })}>Absage rückgängig</button>
+            <button className="sekundaer" onClick={() => mutiere(a => {
+              a.status = anwesend > 0 ? 'durchgefuehrt' : 'geplant'
+              a.abgeschlossen = false
+            })}>Absage rückgängig</button>
           </div>
         </div>
       ) : (
@@ -55,7 +75,9 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
             })}>Alle anwesend</button>
             <button className="leise" onClick={() => mutiere(a => { a.anwesenheit = {}; a.status = 'geplant' })}>Zurücksetzen</button>
             <button className="leise" onClick={() => {
-              if (confirm('Termin als abgesagt markieren? Er erscheint dann nicht im Export.')) mutiere(a => { a.status = 'abgesagt' })
+              if (confirm('Termin als abgesagt markieren? Er erscheint dann nicht im Export.')) {
+                mutiere(a => { a.status = 'abgesagt'; a.abgeschlossen = true })
+              }
             }}>Training abgesagt</button>
           </div>
           <div className="hinweis info">{anwesend} von {mitglieder.length} anwesend — Antippen zum Abhaken.</div>
@@ -82,18 +104,33 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
         })}
       </div>
 
-      <div className="btnreihe">
-        <button className="leise breit" onClick={() => {
-          if (!confirm('Diesen Termin endgültig löschen?')) return
-          update(s => {
-            const n = structuredClone(s)
-            const g = n.gruppen.find(g => g.id === gruppeId)!
-            g.aktivitaeten = g.aktivitaeten.filter(a => a.id !== terminId)
-            return n
-          })
-          window.location.hash = '#/gruppe/' + gruppeId
-        }}>Termin löschen</button>
-      </div>
+      {termin.status !== 'abgesagt' && (
+        <div className="btnreihe">
+          {termin.abgeschlossen ? (
+            <button className="sekundaer breit" onClick={() => mutiere(a => { a.abgeschlossen = false })}>Wieder öffnen</button>
+          ) : (
+            <button className="breit" onClick={() => mutiere(a => { a.abgeschlossen = true })}>Abschliessen</button>
+          )}
+        </div>
+      )}
+
+      {istAdmin && (
+        <div className="btnreihe">
+          <button className="leise breit" onClick={() => {
+            const frage = mehrereSpiele
+              ? `Alle ${geschwister.length} Spiele dieses Tages endgültig löschen?`
+              : 'Diesen Termin endgültig löschen?'
+            if (!confirm(frage)) return
+            update(s => {
+              const n = structuredClone(s)
+              const g = n.gruppen.find(g => g.id === gruppeId)!
+              g.aktivitaeten = g.aktivitaeten.filter(a => !geschwisterIds.includes(a.id))
+              return n
+            })
+            window.location.hash = '#/gruppe/' + gruppeId
+          }}>{mehrereSpiele ? 'Beide Spiele löschen' : 'Termin löschen'}</button>
+        </div>
+      )}
     </Seite>
   )
 }

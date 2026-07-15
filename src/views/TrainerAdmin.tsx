@@ -22,7 +22,7 @@ export function TrainerAdmin({ eigeneEmail }: { eigeneEmail: string }) {
               <div className="titel">{t.name || t.email}</div>
               <div className="sub">{t.email}</div>
             </div>
-            {t.rolle === 'master' && <span className="pill leiter">Master</span>}
+            {t.rolle === 'master' && <span className="pill leiter">Admin</span>}
             {t.email !== eigeneEmail.toLowerCase() && (
               <button className="leise" onClick={() => {
                 if (confirm(`${t.email} den Zugriff entziehen?`)) trainerLoeschen(t.email)
@@ -45,7 +45,7 @@ export function TrainerAdmin({ eigeneEmail }: { eigeneEmail: string }) {
           <label className="feld">Rolle
             <select value={rolle} onChange={e => setRolle(e.target.value as 'trainer' | 'master')}>
               <option value="trainer">Trainer</option>
-              <option value="master">Master</option>
+              <option value="master">Admin</option>
             </select>
           </label>
         </div>
