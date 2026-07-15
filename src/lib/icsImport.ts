@@ -1,5 +1,6 @@
 import type { Aktivitaet, Aktivitaetstyp, AppState, Gruppe } from '../types'
 import { neueId } from '../types'
+import { ICAL_PROXY_URL } from '../config/icalProxy'
 
 // iCal-Import: parst .ics-Feeds (z. B. Google Calendar / kOOL) und gleicht die
 // Termine über die iCal-UID mit einer Gruppe ab. Termine, die ein Mensch schon
@@ -180,10 +181,14 @@ export function verwaisteTermine(gruppe: Gruppe, gesehenUids: Set<string>): Akti
   return gruppe.aktivitaeten.filter(a => a.icalUid && a.status !== 'abgesagt' && !gesehenUids.has(a.icalUid))
 }
 
-/** Google-Calendar-URLs laufen im Dev-Modus über den Vite-Proxy (CORS). */
+/**
+ * Google Calendar liefert keine CORS-Freigabe — ein Browser kann die Feeds nicht direkt
+ * per fetch() laden. Im Dev-Modus übernimmt das der Vite-Proxy (vite.config.ts), in
+ * Produktion (falls konfiguriert) der Cloudflare Worker aus cloudflare-worker/.
+ */
 export function fetchUrl(url: string): string {
-  if (import.meta.env?.DEV && url.startsWith('https://calendar.google.com/')) {
-    return url.replace('https://calendar.google.com', '/gcal')
-  }
+  if (!url.startsWith('https://calendar.google.com/')) return url
+  if (import.meta.env?.DEV) return url.replace('https://calendar.google.com', '/gcal')
+  if (ICAL_PROXY_URL) return `${ICAL_PROXY_URL}?url=${encodeURIComponent(url)}`
   return url
 }
