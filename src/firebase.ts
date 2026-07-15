@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { GoogleAuthProvider, getAuth, signInWithRedirect, signOut, type Auth } from 'firebase/auth'
+import { GoogleAuthProvider, getAuth, signInWithPopup, signOut, type Auth } from 'firebase/auth' // <-- Hier signInWithPopup importiert
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, type Firestore,
 } from 'firebase/firestore'
@@ -40,11 +40,18 @@ export async function googleAnmelden(): Promise<void> {
   if (!auth) return
   const provider = new GoogleAuthProvider()
   provider.setCustomParameters({ prompt: 'select_account' })
-  // Redirect statt Popup: auf iOS Safari bricht signInWithPopup öfters mit
-  // "missing initial state" ab, weil Popup-Fenster und Haupttab dort
-  // getrennten Speicher haben (Intelligent Tracking Prevention). Redirect
-  // bleibt im selben Tab und ist deutlich zuverlässiger auf Mobilgeräten.
-  await signInWithRedirect(auth, provider)
+  
+  // Zurückgestellt auf signInWithPopup für stabile Logins auf GitHub Pages.
+  // Das umgeht die blockierten Drittanbieter-Cookies bei Weiterleitungen.
+  try {
+    await signInWithPopup(auth, provider)
+  } catch (error) {
+    console.error("Popup-Login fehlgeschlagen, versuche Fallback...", error)
+    // Falls das Popup wirklich mal blockiert wird (z.B. durch aggressive Adblocker),
+    // nutzen wir den Redirect als Notfall-Fallback:
+    const { signInWithRedirect } = await import('firebase/auth')
+    await signInWithRedirect(auth, provider)
+  }
 }
 
 export async function abmelden(): Promise<void> {
