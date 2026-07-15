@@ -1,6 +1,6 @@
 import { abmelden, googleAnmelden } from '../firebase'
 
-export function LoginView() {
+export function LoginView({ fehler }: { fehler?: string | null }) {
   return (
     <div className="app" style={{ paddingTop: '18vh', textAlign: 'center' }}>
       <div style={{ fontSize: '3rem' }}>🏑</div>
@@ -8,6 +8,12 @@ export function LoginView() {
       <p style={{ color: 'var(--muted)', maxWidth: '32ch', margin: '0 auto 1.5rem' }}>
         Anwesenheitskontrolle und J+S-Export für die Grizzlys.
       </p>
+      {fehler && (
+        <div className="hinweis fehler" style={{ maxWidth: '34ch', margin: '0 auto 1rem', textAlign: 'left' }}>
+          Anmeldung fehlgeschlagen — das ist ein bekanntes, sporadisches Problem
+          einzelner Browser. Bitte nochmals versuchen.
+        </div>
+      )}
       <button onClick={() => googleAnmelden().catch(e => alert('Anmeldung fehlgeschlagen: ' + e))}>
         Mit Google anmelden
       </button>
