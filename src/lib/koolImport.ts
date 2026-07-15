@@ -128,9 +128,107 @@ function personenSchluessel(p: { ahvNr?: string; vorname: string; nachname: stri
   return 'name:' + `${p.vorname}|${p.nachname}|${p.geburtsdatum ?? ''}`.toLowerCase()
 }
 
+export type MergeFeld =
+  | 'vorname' | 'nachname' | 'strasse' | 'hausnummer' | 'plz' | 'ort' | 'land'
+  | 'ahvNr' | 'email' | 'geschlecht' | 'geburtsdatum' | 'jsNummer'
+
+export const MERGE_FELDER: MergeFeld[] = [
+  'vorname', 'nachname', 'strasse', 'hausnummer', 'plz', 'ort', 'land',
+  'ahvNr', 'email', 'geschlecht', 'geburtsdatum', 'jsNummer',
+]
+
+export const MERGE_FELD_LABEL: Record<MergeFeld, string> = {
+  vorname: 'Vorname', nachname: 'Nachname', strasse: 'Strasse', hausnummer: 'Hausnummer',
+  plz: 'PLZ', ort: 'Ort', land: 'Land', ahvNr: 'AHV-Nummer', email: 'E-Mail',
+  geschlecht: 'Geschlecht', geburtsdatum: 'Geburtsdatum', jsNummer: 'J+S-Nummer',
+}
+
+interface PersonKandidat {
+  vorname: string; nachname: string
+  strasse?: string; hausnummer?: string; plz?: string; ort?: string; land?: string
+  ahvNr?: string; email?: string; geschlecht?: 'm' | 'w'; geburtsdatum?: string; jsNummer?: string
+}
+
+function kandidatVonZeile(zeile: KoolZeile): PersonKandidat | null {
+  const vorname = alsText(feld(zeile, 'Vorname'))
+  const nachname = alsText(feld(zeile, 'Nachname', 'Name'))
+  if (!vorname || !nachname) return null
+  const { strasse, hausnummer } = adresseTeilen(alsText(feld(zeile, 'Adresse', 'Strasse')))
+  return {
+    vorname, nachname, strasse, hausnummer,
+    plz: alsText(feld(zeile, 'Postleitzahl', 'PLZ')),
+    ort: alsText(feld(zeile, 'Ort')),
+    land: normLand(alsText(feld(zeile, 'Land'))) ?? 'CH',
+    ahvNr: normAhv(alsText(feld(zeile, 'AHV-Nummer', 'AHV-Nr', 'AHV'))),
+    email: alsText(feld(zeile, 'E-Mail', 'Email')),
+    geschlecht: normGeschlecht(alsText(feld(zeile, 'Geschlecht'))),
+    geburtsdatum: isoDatum(feld(zeile, 'Geburtsdatum')),
+    jsNummer: alsText(feld(zeile, 'J+S-Nummer', 'JS-Nummer', 'Personennummer')),
+  }
+}
+
+function baueIndex(personen: Person[]): Map<string, Person> {
+  const index = new Map<string, Person>()
+  for (const p of personen) {
+    index.set(personenSchluessel(p), p)
+    if (p.ahvNr) index.set('name:' + `${p.vorname}|${p.nachname}|${p.geburtsdatum ?? ''}`.toLowerCase(), p)
+  }
+  return index
+}
+
+function findePerson(index: Map<string, Person>, kandidat: PersonKandidat): Person | undefined {
+  return index.get(personenSchluessel(kandidat))
+    ?? index.get('name:' + `${kandidat.vorname}|${kandidat.nachname}|${kandidat.geburtsdatum ?? ''}`.toLowerCase())
+}
+
+export interface PersonDiffFeld {
+  feld: MergeFeld
+  bestehend?: string
+  kool?: string
+}
+
+export interface PersonDiff {
+  zeilenIndex: number
+  personId: string
+  name: string
+  felder: PersonDiffFeld[]
+}
+
+/**
+ * Vergleicht jede Zeile mit einer bereits bekannten Person (AHV- oder Name+Geburtsdatum-Treffer)
+ * und listet nur echte Konflikte auf: Felder, die auf BEIDEN Seiten einen Wert haben und sich
+ * unterscheiden. Neue Personen (kein Treffer) brauchen keine Prüfung — die werden 1:1 angelegt.
+ */
+export function berechnePersonenDifferenzen(state: AppState, zeilen: KoolZeile[]): PersonDiff[] {
+  const index = baueIndex(state.personen)
+  const ergebnis: PersonDiff[] = []
+  zeilen.forEach((zeile, zeilenIndex) => {
+    const kandidat = kandidatVonZeile(zeile)
+    if (!kandidat) return
+    const person = findePerson(index, kandidat)
+    if (!person) return
+
+    const felder: PersonDiffFeld[] = []
+    for (const f of MERGE_FELDER) {
+      const bestehend = person[f] as string | undefined
+      const kool = kandidat[f] as string | undefined
+      if (bestehend !== undefined && kool !== undefined && bestehend !== kool) {
+        felder.push({ feld: f, bestehend, kool })
+      }
+    }
+    if (felder.length > 0) {
+      ergebnis.push({ zeilenIndex, personId: person.id, name: `${person.vorname} ${person.nachname}`, felder })
+    }
+  })
+  return ergebnis
+}
+
 export interface ImportOptionen {
   teamZuordnung: Record<string, string | null> // teamName (Original-Schreibweise) -> gruppeId, null = ignorieren
-  ueberschreiben: boolean // true: kOOL-Werte gewinnen (bisheriges Verhalten). false: bestehende Werte bleiben, nur Lücken werden gefüllt.
+  ueberschreiben: boolean // Vorauswahl für Felder OHNE explizite Entscheidung: true = kOOL gewinnt, false = Bestehendes bleibt.
+  // Explizite, personenweise Entscheidungen für Felder mit echtem Konflikt (siehe berechnePersonenDifferenzen),
+  // Schlüssel = zeilenIndex. Fehlt ein Feld hier, greift die ueberschreiben-Vorauswahl.
+  personEntscheidungen?: Record<number, Partial<Record<MergeFeld, 'kool' | 'bestehend'>>>
 }
 
 /**
@@ -143,57 +241,25 @@ export function koolImportieren(
 ): { state: AppState; ergebnis: ImportErgebnis } {
   const neu: AppState = JSON.parse(JSON.stringify(state))
   const ergebnis: ImportErgebnis = { neuePersonen: 0, aktualisiertePersonen: 0, mitgliedschaften: 0, uebersprungeneTeams: 0, warnungen: [] }
-  const uebersprungen = new Set<string>()
+  const uebersprungeneTeamnamen = new Set<string>()
+  const index = baueIndex(neu.personen)
 
-  const index = new Map<string, Person>()
-  for (const p of neu.personen) {
-    index.set(personenSchluessel(p), p)
-    if (p.ahvNr) index.set('name:' + `${p.vorname}|${p.nachname}|${p.geburtsdatum ?? ''}`.toLowerCase(), p)
-  }
+  zeilen.forEach((zeile, zeilenIndex) => {
+    const kandidat = kandidatVonZeile(zeile)
+    if (!kandidat) return
+    const { vorname, nachname } = kandidat
 
-  for (const zeile of zeilen) {
-    const vorname = alsText(feld(zeile, 'Vorname'))
-    const nachname = alsText(feld(zeile, 'Nachname', 'Name'))
-    if (!vorname || !nachname) continue
-
-    const { strasse, hausnummer } = adresseTeilen(alsText(feld(zeile, 'Adresse', 'Strasse')))
-    const kandidat = {
-      vorname,
-      nachname,
-      strasse,
-      hausnummer,
-      plz: alsText(feld(zeile, 'Postleitzahl', 'PLZ')),
-      ort: alsText(feld(zeile, 'Ort')),
-      land: normLand(alsText(feld(zeile, 'Land'))) ?? 'CH',
-      ahvNr: normAhv(alsText(feld(zeile, 'AHV-Nummer', 'AHV-Nr', 'AHV'))),
-      email: alsText(feld(zeile, 'E-Mail', 'Email')),
-      geschlecht: normGeschlecht(alsText(feld(zeile, 'Geschlecht'))),
-      geburtsdatum: isoDatum(feld(zeile, 'Geburtsdatum')),
-      jsNummer: alsText(feld(zeile, 'J+S-Nummer', 'JS-Nummer', 'Personennummer')),
-    }
-
-    let person = index.get(personenSchluessel(kandidat))
-      ?? index.get('name:' + `${vorname}|${nachname}|${kandidat.geburtsdatum ?? ''}`.toLowerCase())
+    let person = findePerson(index, kandidat)
 
     if (person) {
-      // Bei "überschreiben" ist kOOL führend (Lücken werden trotzdem vom bestehenden
-      // Wert gefüllt); sonst bleiben bestehende Werte stehen und nur Lücken werden ergänzt.
-      const wert = <K extends 'strasse' | 'hausnummer' | 'plz' | 'ort' | 'land' | 'ahvNr' | 'email' | 'geschlecht' | 'geburtsdatum' | 'jsNummer'>(feldname: K) =>
-        optionen.ueberschreiben ? (kandidat[feldname] ?? person![feldname]) : (person![feldname] ?? kandidat[feldname])
-      Object.assign(person, {
-        vorname, nachname,
-        strasse: wert('strasse'),
-        hausnummer: wert('hausnummer'),
-        plz: wert('plz'),
-        ort: wert('ort'),
-        land: wert('land'),
-        ahvNr: wert('ahvNr'),
-        email: wert('email'),
-        geschlecht: wert('geschlecht'),
-        geburtsdatum: wert('geburtsdatum'),
-        jsNummer: wert('jsNummer'),
-        quelle: 'kool',
-      })
+      const entscheidungen = optionen.personEntscheidungen?.[zeilenIndex]
+      const wert = (feldname: MergeFeld) => {
+        const entscheidung = entscheidungen?.[feldname]
+        if (entscheidung === 'kool') return kandidat[feldname] ?? person![feldname]
+        if (entscheidung === 'bestehend') return person![feldname] ?? kandidat[feldname]
+        return optionen.ueberschreiben ? (kandidat[feldname] ?? person![feldname]) : (person![feldname] ?? kandidat[feldname])
+      }
+      Object.assign(person, Object.fromEntries(MERGE_FELDER.map(f => [f, wert(f)])), { quelle: 'kool' })
       ergebnis.aktualisiertePersonen++
     } else {
       person = {
@@ -223,8 +289,8 @@ export function koolImportieren(
         const gruppeId = optionen.teamZuordnung[teamName]
         const gruppe = gruppeId ? neu.gruppen.find(g => g.id === gruppeId) : undefined
         if (!gruppe) {
-          if (!uebersprungen.has(teamName)) {
-            uebersprungen.add(teamName)
+          if (!uebersprungeneTeamnamen.has(teamName)) {
+            uebersprungeneTeamnamen.add(teamName)
             ergebnis.uebersprungeneTeams++
             ergebnis.warnungen.push(`Team «${teamName}» wurde keiner Gruppe zugeordnet — Mitgliedschaften dafür übersprungen.`)
           }
@@ -246,7 +312,7 @@ export function koolImportieren(
         }
       }
     }
-  }
+  })
 
   neu.gruppen.sort((a, b) => a.name.localeCompare(b.name, 'de'))
   return { state: neu, ergebnis }

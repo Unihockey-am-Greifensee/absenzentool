@@ -3,23 +3,27 @@ import * as XLSX from 'xlsx'
 import type { AppState } from '../types'
 import { Seite, type Update } from '../App'
 import {
-  koolImportieren, sammleTeamNamen, teamZuordnungVorschlagen,
-  type ImportErgebnis, type KoolZeile,
+  berechnePersonenDifferenzen, koolImportieren, sammleTeamNamen, teamZuordnungVorschlagen,
+  MERGE_FELD_LABEL, type ImportErgebnis, type ImportOptionen, type KoolZeile, type MergeFeld, type PersonDiff,
 } from '../lib/koolImport'
 
-type Schritt = 'datei' | 'zuordnung' | 'ergebnis'
+type Schritt = 'datei' | 'zuordnung' | 'differenzen' | 'ergebnis'
+type Entscheidungen = Record<number, Partial<Record<MergeFeld, 'kool' | 'bestehend'>>>
 
 export function ImportView({ state, update }: { state: AppState; update: Update }) {
   const [schritt, setSchritt] = useState<Schritt>('datei')
   const [zeilen, setZeilen] = useState<KoolZeile[] | null>(null)
   const [teamNamen, setTeamNamen] = useState<string[]>([])
   const [auswahl, setAuswahl] = useState<Record<string, string>>({})
+  const [differenzen, setDifferenzen] = useState<PersonDiff[]>([])
+  const [entscheidungen, setEntscheidungen] = useState<Entscheidungen>({})
   const [ueberschreiben, setUeberschreiben] = useState(true)
   const [ergebnis, setErgebnis] = useState<ImportErgebnis | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
 
   const zurueckAufAnfang = () => {
-    setSchritt('datei'); setZeilen(null); setTeamNamen([]); setAuswahl({}); setErgebnis(null); setFehler(null)
+    setSchritt('datei'); setZeilen(null); setTeamNamen([]); setAuswahl({})
+    setDifferenzen([]); setEntscheidungen({}); setErgebnis(null); setFehler(null)
   }
 
   const dateiWaehlen = async (file: File) => {
@@ -39,21 +43,38 @@ export function ImportView({ state, update }: { state: AppState; update: Update 
       setZeilen(gelesen)
       setTeamNamen(namen)
       setAuswahl(start)
+      setDifferenzen(berechnePersonenDifferenzen(state, gelesen))
+      setEntscheidungen({})
       setSchritt('zuordnung')
     } catch (e) {
       setFehler('Datei konnte nicht gelesen werden: ' + String(e))
     }
   }
 
-  const importieren = () => {
+  const jetztImportieren = (entsch: Entscheidungen) => {
     if (!zeilen) return
     const teamZuordnung: Record<string, string | null> = {}
     for (const name of teamNamen) teamZuordnung[name] = auswahl[name] || null
-    const res = koolImportieren(state, zeilen, { teamZuordnung, ueberschreiben })
+    const optionen: ImportOptionen = { teamZuordnung, ueberschreiben, personEntscheidungen: entsch }
+    const res = koolImportieren(state, zeilen, optionen)
     update(() => res.state)
     setErgebnis(res.ergebnis)
     setSchritt('ergebnis')
   }
+
+  const weiterZuDifferenzenOderImport = () => {
+    if (differenzen.length > 0) setSchritt('differenzen')
+    else jetztImportieren(entscheidungen)
+  }
+
+  const setzeEntscheidung = (zeilenIndex: number, f: MergeFeld, wert: 'kool' | 'bestehend') =>
+    setEntscheidungen(e => ({ ...e, [zeilenIndex]: { ...e[zeilenIndex], [f]: wert } }))
+
+  const setzeAlleFuer = (diff: PersonDiff, wert: 'kool' | 'bestehend') =>
+    setEntscheidungen(e => ({
+      ...e,
+      [diff.zeilenIndex]: Object.fromEntries(diff.felder.map(f => [f.feld, wert])),
+    }))
 
   if (schritt === 'datei') {
     return (
@@ -67,7 +88,8 @@ export function ImportView({ state, update }: { state: AppState; update: Update 
             Der Import gleicht über AHV-Nummer bzw. Name + Geburtsdatum ab: Bestehende Personen werden
             aktualisiert, neue angelegt. Team-Namen aus kOOL ordnest du im nächsten Schritt bestehenden
             Gruppen zu — es werden dabei nie automatisch neue Gruppen angelegt (das machst du unter
-            Admin → Gruppen verwalten).
+            Admin → Gruppen verwalten). Abweichende Angaben bei bestehenden Personen zeigt dir der Import
+            danach einzeln zur Entscheidung.
           </p>
           <input
             type="file"
@@ -115,6 +137,9 @@ export function ImportView({ state, update }: { state: AppState; update: Update 
             <input type="radio" checked={!ueberschreiben} onChange={() => setUeberschreiben(false)} style={{ width: 'auto' }} />
             Bestehende Angaben behalten, nur Lücken mit kOOL-Werten füllen
           </label>
+          <p className="sub" style={{ margin: '0.5rem 0 0' }}>
+            Gilt nur, wo du im nächsten Schritt keine Einzelentscheidung triffst.
+          </p>
         </div>
 
         {!alleZugeordnet && (
@@ -122,10 +147,66 @@ export function ImportView({ state, update }: { state: AppState; update: Update 
             {teamNamen.filter(n => !auswahl[n]).length} Team(s) sind auf «Ignorieren» gesetzt — dafür werden keine Mitgliedschaften importiert.
           </div>
         )}
+        {differenzen.length > 0 && (
+          <div className="hinweis info">
+            Bei {differenzen.length} bestehenden Personen weichen einzelne Angaben vom kOOL-Export ab —
+            die prüfst du im nächsten Schritt einzeln.
+          </div>
+        )}
 
         <div className="btnreihe">
           <button className="leise" onClick={zurueckAufAnfang}>Abbrechen</button>
-          <button className="breit" onClick={importieren}>Import durchführen</button>
+          <button className="breit" onClick={weiterZuDifferenzenOderImport}>
+            {differenzen.length > 0 ? `Weiter zu Differenzen (${differenzen.length})` : 'Import durchführen'}
+          </button>
+        </div>
+      </Seite>
+    )
+  }
+
+  if (schritt === 'differenzen') {
+    return (
+      <Seite titel="Personen-Differenzen" zurueck="" tab="gruppen">
+        <div className="hinweis info">
+          {differenzen.length} Personen haben abweichende Angaben. Wähle pro Feld, was gelten soll —
+          unentschiedene Felder folgen der Vorauswahl von Schritt 2 ({ueberschreiben ? 'kOOL gewinnt' : 'Bestehendes bleibt'}).
+        </div>
+
+        {differenzen.map(diff => (
+          <div key={diff.zeilenIndex} className="karte">
+            <div className="btnreihe" style={{ marginTop: 0, justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>{diff.name}</h3>
+              <div className="btnreihe" style={{ margin: 0 }}>
+                <button className="leise" onClick={() => setzeAlleFuer(diff, 'bestehend')}>Alle behalten</button>
+                <button className="leise" onClick={() => setzeAlleFuer(diff, 'kool')}>Alle von kOOL</button>
+              </div>
+            </div>
+            {diff.felder.map(f => {
+              const wahl = entscheidungen[diff.zeilenIndex]?.[f.feld] ?? (ueberschreiben ? 'kool' : 'bestehend')
+              return (
+                <div key={f.feld} className="zeile">
+                  <div className="haupt">
+                    <div className="titel" style={{ fontSize: '0.85rem' }}>{MERGE_FELD_LABEL[f.feld]}</div>
+                  </div>
+                  <div className="btnreihe" style={{ margin: 0 }}>
+                    <button className={wahl === 'bestehend' ? '' : 'sekundaer'}
+                      onClick={() => setzeEntscheidung(diff.zeilenIndex, f.feld, 'bestehend')}>
+                      Bisher: {f.bestehend}
+                    </button>
+                    <button className={wahl === 'kool' ? '' : 'sekundaer'}
+                      onClick={() => setzeEntscheidung(diff.zeilenIndex, f.feld, 'kool')}>
+                      kOOL: {f.kool}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ))}
+
+        <div className="btnreihe">
+          <button className="leise" onClick={() => setSchritt('zuordnung')}>Zurück</button>
+          <button className="breit" onClick={() => jetztImportieren(entscheidungen)}>Import durchführen</button>
         </div>
       </Seite>
     )
