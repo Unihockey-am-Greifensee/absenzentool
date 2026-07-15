@@ -1,4 +1,4 @@
-import type { Aktivitaet, Gruppe } from '../types'
+import type { AppState, Aktivitaet, Gruppe } from '../types'
 
 export interface TerminGruppe {
   haupt: Aktivitaet // repräsentativer Eintrag — dient als Link-Ziel
@@ -32,4 +32,34 @@ export function terminGruppen(gruppe: Gruppe): TerminGruppe[] {
 export function terminGeschwister(gruppe: Gruppe, termin: Aktivitaet): Aktivitaet[] {
   if (termin.typ !== 'Wettkampf') return [termin]
   return gruppe.aktivitaeten.filter(x => x.typ === 'Wettkampf' && x.datum === termin.datum)
+}
+
+/** Wie viele noch offene Termine (Datum <= Stichtag) ein Halbjahresabschluss betreffen würde. */
+export function zaehleAbzuschliessendeTermine(state: AppState, stichtag: string): number {
+  let n = 0
+  for (const g of state.gruppen) {
+    for (const a of g.aktivitaeten) {
+      if (a.datum <= stichtag && !a.abgeschlossen) n++
+    }
+  }
+  return n
+}
+
+/**
+ * Schliesst alle Termine bis (und mit) dem Stichtag ab — dieselbe Sperre wie beim
+ * einzelnen «Abschliessen» (TerminDetail): keine Anwesenheit mehr bearbeitbar, und
+ * die Termine wandern in der Gruppenübersicht automatisch von «Aktuell» zu «Abgeschlossen».
+ */
+export function terminAbschliessenBisStichtag(state: AppState, stichtag: string): { state: AppState; anzahl: number } {
+  const neu: AppState = structuredClone(state)
+  let anzahl = 0
+  for (const g of neu.gruppen) {
+    for (const a of g.aktivitaeten) {
+      if (a.datum <= stichtag && !a.abgeschlossen) {
+        a.abgeschlossen = true
+        anzahl++
+      }
+    }
+  }
+  return { state: neu, anzahl }
 }

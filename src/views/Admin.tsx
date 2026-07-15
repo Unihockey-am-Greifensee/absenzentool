@@ -13,6 +13,7 @@ export function AdminHub({ update }: { update: Update }) {
           <a className="btn sekundaer breit" href="#/trainer">Trainer-Verwaltung</a>
         )}
         <a className="btn sekundaer breit" href="#/nds-export">NDS-Export</a>
+        <a className="btn sekundaer breit" href="#/halbjahresabschluss">Halbjahresabschluss</a>
         <a className="btn sekundaer breit" href="#/backup">Datensicherung</a>
       </div>
     </Seite>
