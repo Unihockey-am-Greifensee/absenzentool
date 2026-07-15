@@ -73,7 +73,7 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
               {foto && <img src={foto.datenUrl} alt="" className="foto-icon" />}
               <div className="haupt">
                 <div className="titel">{p.vorname} {p.nachname}</div>
-                {m.rolle && <div className="sub">{m.rolle}</div>}
+                <div className="sub">{m.rolle ?? m.funktion}</div>
               </div>
               <div className="statusreihe">
                 {STATUS_OPTIONEN.map(o => (
