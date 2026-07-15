@@ -1,26 +1,16 @@
-import { useEffect, useState } from 'react'
-import { collection, onSnapshot } from 'firebase/firestore'
-import { db } from '../firebase'
-import { trainerLoeschen, trainerSpeichern, type TrainerInfo } from '../lib/firestoreSync'
+import { useState } from 'react'
+import { trainerLoeschen, trainerSpeichern } from '../lib/firestoreSync'
+import { useTrainerListe } from '../lib/useTrainerListe'
 import { Seite } from '../App'
 
 export function TrainerAdmin({ eigeneEmail }: { eigeneEmail: string }) {
-  const [liste, setListe] = useState<TrainerInfo[]>([])
+  const liste = useTrainerListe()
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [rolle, setRolle] = useState<'trainer' | 'master'>('trainer')
 
-  useEffect(() => {
-    if (!db) return
-    return onSnapshot(collection(db, 'trainer'), snap => {
-      const t: TrainerInfo[] = []
-      snap.forEach(d => t.push({ email: d.id, ...(d.data() as Omit<TrainerInfo, 'email'>) }))
-      setListe(t.sort((a, b) => a.email.localeCompare(b.email)))
-    })
-  }, [])
-
   return (
-    <Seite titel="Trainer-Verwaltung" zurueck="" tab="gruppen">
+    <Seite titel="Trainer-Verwaltung" zurueck="export" tab="export">
       <div className="hinweis info">
         Freigeschaltete Google-Konten. Die Zuteilung zu den Gruppen machst du in der
         jeweiligen Gruppe unter «Trainer-Zuteilung».

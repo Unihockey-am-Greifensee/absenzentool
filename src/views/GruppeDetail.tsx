@@ -5,6 +5,7 @@ import { Seite, useBenutzer, type Update } from '../App'
 import { heute } from '../lib/datum'
 import { DAUER_TRAINING, DAUER_TRAININGSTAG } from '../lib/ndsExport'
 import { KalenderSektion } from './IcalSync'
+import { useTrainerListe } from '../lib/useTrainerListe'
 
 const WOCHENTAGE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 
@@ -90,36 +91,61 @@ export function GruppeDetail({ state, update, gruppeId }: { state: AppState; upd
 function TrainerZuteilung({ state, update, gruppeId }: { state: AppState; update: Update; gruppeId: string }) {
   const benutzer = useBenutzer()
   const gruppe = state.gruppen.find(g => g.id === gruppeId)!
-  const [neu, setNeu] = useState('')
+  const trainerListe = useTrainerListe()
+  const [auswahl, setAuswahl] = useState('')
   if (benutzer.rolle !== 'master') return null
   const emails = gruppe.trainerEmails ?? []
+  const registriert = new Map(trainerListe.map(t => [t.email, t]))
+  const verfuegbar = trainerListe.filter(t => t.rolle === 'trainer' && !emails.includes(t.email))
+
   const setzen = (liste: string[]) =>
     update(s => {
       const n = structuredClone(s)
       n.gruppen.find(g => g.id === gruppeId)!.trainerEmails = liste
       return n
     })
+
   return (
     <details className="aufklapp">
       <summary>Trainer-Zuteilung ({emails.length})</summary>
       <div className="karte">
-        {emails.map(e => (
-          <div key={e} className="zeile">
-            <div className="haupt"><div className="titel" style={{ fontSize: '0.85rem' }}>{e}</div></div>
-            <button className="leise" onClick={() => setzen(emails.filter(x => x !== e))}>✕</button>
-          </div>
-        ))}
+        {emails.map(e => {
+          const t = registriert.get(e)
+          return (
+            <div key={e} className="zeile">
+              <div className="haupt">
+                <div className="titel" style={{ fontSize: '0.85rem' }}>{t?.name || e}</div>
+                {t?.name && <div className="sub">{e}</div>}
+              </div>
+              <button className="leise" onClick={() => setzen(emails.filter(x => x !== e))}>✕</button>
+            </div>
+          )
+        })}
         {emails.length === 0 && <div className="sub">Noch keinem Trainer-Konto zugeteilt.</div>}
-        <label className="feld">Google-Mailadresse hinzufügen
-          <input value={neu} onChange={e => setNeu(e.target.value)} placeholder="name@gmail.com" />
-        </label>
-        <button className="sekundaer breit" disabled={!/^\S+@\S+\.\S+$/.test(neu.trim())} onClick={() => {
-          setzen([...emails, neu.trim().toLowerCase()])
-          setNeu('')
-        }}>Zuteilen</button>
-        <div className="sub" style={{ marginTop: '0.5rem' }}>
-          Das Konto muss zusätzlich in der <a href="#/trainer">Trainer-Verwaltung</a> freigeschaltet sein.
-        </div>
+
+        {verfuegbar.length > 0 ? (
+          <>
+            <label className="feld">Trainer zuteilen
+              <select value={auswahl} onChange={e => setAuswahl(e.target.value)}>
+                <option value="">— auswählen —</option>
+                {verfuegbar.map(t => (
+                  <option key={t.email} value={t.email}>{t.name ? `${t.name} (${t.email})` : t.email}</option>
+                ))}
+              </select>
+            </label>
+            <button className="sekundaer breit" disabled={!auswahl} onClick={() => {
+              setzen([...emails, auswahl])
+              setAuswahl('')
+            }}>Zuteilen</button>
+          </>
+        ) : (
+          <div className="sub">
+            {trainerListe.filter(t => t.rolle === 'trainer').length === 0
+              ? 'Noch keine Trainer registriert.'
+              : 'Alle registrierten Trainer sind bereits zugeteilt.'}
+            {' '}Neue Konten schaltest du in der <a href="#/trainer">Trainer-Verwaltung</a> frei.
+          </div>
+        )}
       </div>
     </details>
   )

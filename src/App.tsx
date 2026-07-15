@@ -170,7 +170,7 @@ export function Seite(props: {
         </a>
         {benutzer.rolle !== 'trainer' && (
           <a href="#/export" className={props.tab === 'export' ? 'aktiv' : ''}>
-            <span className="icon">📤</span>Export
+            <span className="icon">⚙️</span>Admin
           </a>
         )}
       </nav>
