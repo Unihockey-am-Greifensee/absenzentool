@@ -12,6 +12,7 @@ import { ImportView } from './views/Import'
 import { ExportView } from './views/Export'
 import { LadeAnzeige, LoginView, NichtFreigeschaltet } from './views/Auth'
 import { TrainerAdmin } from './views/TrainerAdmin'
+import { BackupView } from './views/Backup'
 
 export type Update = (fn: (s: AppState) => AppState) => void
 
@@ -51,6 +52,7 @@ function Router({ state, update }: { state: AppState; update: Update }) {
   if (seg[0] === 'import' && istMaster) return <ImportView state={state} update={update} />
   if (seg[0] === 'export' && istMaster) return <ExportView state={state} />
   if (seg[0] === 'trainer' && benutzer.rolle === 'master') return <TrainerAdmin eigeneEmail={benutzer.email!} />
+  if (seg[0] === 'backup' && istMaster) return <BackupView state={state} update={update} />
   return <GruppenListe state={state} update={update} />
 }
 

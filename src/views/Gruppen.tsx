@@ -44,6 +44,7 @@ export function GruppenListe({ state, update }: { state: AppState; update: Updat
           <a className="btn sekundaer breit" href="#/import">kOOL-Export importieren</a>
           <VorlagenKnopf update={update} />
           {benutzer.rolle === 'master' && <a className="btn leise breit" href="#/trainer">Trainer-Verwaltung</a>}
+          <a className="btn leise breit" href="#/backup">Datensicherung</a>
         </div>
       )}
     </Seite>

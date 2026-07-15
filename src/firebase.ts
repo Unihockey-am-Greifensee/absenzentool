@@ -15,7 +15,11 @@ const firebaseConfig = {
   appId: '1:260146342129:web:ee77e4374024804a92e150',
 }
 
-export const firebaseAktiv = firebaseConfig.apiKey !== ''
+// Dev-Server: mit ?lokal in den localStorage-Modus schalten (zum Testen ohne Login).
+// In der Produktion (import.meta.env.DEV === false) wirkungslos.
+const lokalErzwingen = import.meta.env?.DEV === true && new URLSearchParams(location.search).has('lokal')
+
+export const firebaseAktiv = firebaseConfig.apiKey !== '' && !lokalErzwingen
 
 let _auth: Auth | null = null
 let _db: Firestore | null = null
