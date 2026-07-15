@@ -152,9 +152,9 @@ export function Seite(props: {
         <h1>{props.titel}</h1>
         {benutzer.rolle !== 'lokal' && (
           <button
+            className="konto"
             onClick={() => { if (confirm('Abmelden?')) abmelden() }}
             title={`Angemeldet als ${benutzer.email}`}
-            style={{ background: 'rgba(255,255,255,0.15)', padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
           >
             {(benutzer.name || benutzer.email || '?').slice(0, 1).toUpperCase()}
           </button>
