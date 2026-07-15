@@ -6,11 +6,12 @@ export function GruppenListe({ state }: { state: AppState; update: Update }) {
   const benutzer = useBenutzer()
   const istMaster = benutzer.rolle !== 'trainer'
 
-  let gruppen = state.gruppen
-  if (benutzer.rolle === 'trainer') {
-    const eigene = gruppen.filter(g => g.trainerEmails?.includes(benutzer.email!.toLowerCase()))
-    if (eigene.length > 0) gruppen = eigene
-  }
+  // Trainer sehen ausschliesslich ihre zugeteilten Gruppen — auch wenn das null sind
+  // (vorher wurden bei fehlender Zuteilung fälschlich ALLE Gruppen gezeigt, was beim
+  // Erfassen dann an den Firestore-Regeln scheiterte).
+  const gruppen = benutzer.rolle === 'trainer'
+    ? state.gruppen.filter(g => g.trainerEmails?.includes(benutzer.email!.toLowerCase()))
+    : state.gruppen
 
   return (
     <Seite titel="Absenzentool" tab="gruppen">

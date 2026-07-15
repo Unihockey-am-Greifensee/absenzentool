@@ -44,9 +44,11 @@ service cloud.firestore {
     }
 
     match /personen/{id} {
-      // Trainer dürfen Personen sehen und erfassen/ergänzen; löschen nur Master.
-      allow read, create, update: if istTrainer();
-      allow delete: if istMaster();
+      // Trainer dürfen Personen nur sehen. Stammdaten (Name, Adresse, J+S-Angaben)
+      // ändert nur der Master — Gruppenzuteilung läuft separat über gruppen.mitglieder,
+      // wo zugeteilte Trainer bereits schreiben dürfen (siehe unten).
+      allow read: if istTrainer();
+      allow create, update, delete: if istMaster();
     }
 
     match /personenVertraulich/{id} {
