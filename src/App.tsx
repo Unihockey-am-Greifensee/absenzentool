@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
-import { getRedirectResult, onAuthStateChanged, type User } from 'firebase/auth'
+import { onAuthStateChanged, type User } from 'firebase/auth'
 import type { AppState } from './types'
 import { loadState, saveState } from './storage'
 import { abmelden, auth, firebaseAktiv } from './firebase'
@@ -122,20 +122,11 @@ function SyncApp({ info }: { info: TrainerInfo }) {
 function FirebaseApp() {
   const [user, setUser] = useState<User | null | undefined>(undefined)
   const [info, setInfo] = useState<TrainerInfo | null | undefined>(undefined)
-  const [redirectFehler, setRedirectFehler] = useState<string | null>(null)
 
   useEffect(() => onAuthStateChanged(auth!, u => {
     setUser(u)
     setInfo(undefined)
   }), [])
-
-  // Fängt Fehler aus dem Redirect-Login ab (z. B. das bekannte, sporadische
-  // Firebase-Problem "missing initial state" auf iOS Safari) — sonst bliebe
-  // die App nach einem gescheiterten Login stumm bei der Login-Seite hängen.
-  useEffect(() => {
-    if (!auth) return
-    getRedirectResult(auth).catch(e => setRedirectFehler(String(e?.message ?? e)))
-  }, [])
 
   useEffect(() => {
     if (!user?.email) return
@@ -143,7 +134,7 @@ function FirebaseApp() {
   }, [user])
 
   if (user === undefined) return <LadeAnzeige text="Prüfe Anmeldung …" />
-  if (user === null) return <LoginView fehler={redirectFehler} />
+  if (user === null) return <LoginView />
   if (info === undefined) return <LadeAnzeige text="Prüfe Freischaltung …" />
   if (info === null) return <NichtFreigeschaltet email={user.email ?? '?'} />
   return <SyncApp info={info} />

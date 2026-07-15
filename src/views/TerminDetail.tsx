@@ -57,7 +57,7 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
       if (a.status === 'geplant') a.status = 'durchgefuehrt'
     })
 
-  const gesperrt = termin.status === 'abgesagt' || !!termin.abgeschlossen
+  const gesperrt = termin.status === 'abgesagt' || !!termin.abgeschlossen || !!termin.archiviert
 
   const gruppenBox = (titel: string, liste: Mitglied[], leerText: string) => (
     <>
@@ -114,12 +114,12 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
       ) : (
         <>
           <div className="btnreihe">
-            <button className="sekundaer" disabled={termin.abgeschlossen} onClick={() => mutiere(a => {
+            <button className="sekundaer" disabled={gesperrt} onClick={() => mutiere(a => {
               for (const m of aktive) a.anwesenheit[m.personId] = 'anwesend'
               a.status = 'durchgefuehrt'
             })}>Alle anwesend</button>
-            <button className="leise" disabled={termin.abgeschlossen} onClick={() => mutiere(a => { a.anwesenheit = {}; a.status = 'geplant' })}>Zurücksetzen</button>
-            <button className="leise" disabled={termin.abgeschlossen} onClick={() => {
+            <button className="leise" disabled={gesperrt} onClick={() => mutiere(a => { a.anwesenheit = {}; a.status = 'geplant' })}>Zurücksetzen</button>
+            <button className="leise" disabled={gesperrt} onClick={() => {
               if (confirm('Termin als abgesagt markieren? Er erscheint dann nicht im Export.')) {
                 mutiere(a => { a.status = 'abgesagt'; a.abgeschlossen = true })
               }
@@ -128,7 +128,8 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
           <div className="hinweis info">
             {zaehlung.anwesend} anwesend · {zaehlung.abgemeldet} abgemeldet · {zaehlung.unabgemeldet} unabgemeldet
             {zaehlung.offen > 0 && ` · ${zaehlung.offen} offen`}
-            {termin.abgeschlossen ? ' — abgeschlossen, «Wieder öffnen» zum Bearbeiten.' : ''}
+            {termin.archiviert ? ' — archiviert, nur der Admin kann das aufheben.'
+              : termin.abgeschlossen ? ' — abgeschlossen, «Wieder öffnen» zum Bearbeiten.' : ''}
           </div>
         </>
       )}
@@ -137,7 +138,16 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
       {gruppenBox('Team', team, 'Keine Spieler/innen in dieser Gruppe.')}
       {gruppenBox('Schnuppernde', schnuppernde, 'Niemand am Schnuppern.')}
 
-      {termin.status !== 'abgesagt' && (
+      {termin.archiviert ? (
+        <div className="hinweis warnung">
+          Dieser Termin wurde im Halbjahresabschluss archiviert und ist für Trainer nicht mehr bearbeitbar.
+          {istAdmin && (
+            <div className="btnreihe" style={{ marginBottom: 0 }}>
+              <button className="sekundaer" onClick={() => mutiere(a => { a.archiviert = false })}>Archivierung aufheben</button>
+            </div>
+          )}
+        </div>
+      ) : termin.status !== 'abgesagt' && (
         <div className="btnreihe">
           {termin.abgeschlossen ? (
             <button className="sekundaer breit" onClick={() => mutiere(a => { a.abgeschlossen = false })}>Wieder öffnen</button>

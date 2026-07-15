@@ -23,6 +23,11 @@ export interface Person {
   nationalitaet?: string // CH | FL | Andere
   muttersprache?: string // DE | FR | IT | Andere
   email?: string
+  mobil?: string // eigenes Mobiltelefon
+  emailMutter?: string
+  emailVater?: string
+  mobilMutter?: string
+  mobilVater?: string
   quelle: 'kool' | 'manuell'
   archiviert?: boolean // Admin hat die Person global archiviert — ausgeblendet, aber noch nicht endgültig gelöscht
 }
@@ -50,8 +55,10 @@ export interface Aktivitaet {
   // eines Status-Strings — siehe lib/anwesenheit.ts für den robusten Zugriff.
   anwesenheit: Record<string, AnwesenheitStatus | boolean>
   icalUid?: string // gesetzt, wenn der Termin aus einem iCal-Feed stammt
-  abgeschlossen?: boolean // Trainer hat den Termin bewusst abgeschlossen — steuert nur die
-  // Übersichts-Einteilung (Aktuell/Abgeschlossen), unabhängig von status/NDS-Export
+  abgeschlossen?: boolean // Trainer schliesst den Termin selbst ab — sperrt die Anwesenheit,
+  // bis er ihn wieder öffnet. Steuert nur die Übersichts-Einteilung, unabhängig von status/NDS-Export.
+  archiviert?: boolean // Nur der Admin setzt dies, ausschliesslich über den Halbjahresabschluss.
+  // Sperrt die Anwesenheit endgültiger als abgeschlossen — Trainer können das nicht selbst aufheben.
 }
 
 export interface Foto {

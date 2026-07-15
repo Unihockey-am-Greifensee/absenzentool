@@ -34,29 +34,29 @@ export function terminGeschwister(gruppe: Gruppe, termin: Aktivitaet): Aktivitae
   return gruppe.aktivitaeten.filter(x => x.typ === 'Wettkampf' && x.datum === termin.datum)
 }
 
-/** Wie viele noch offene Termine (Datum <= Stichtag) ein Halbjahresabschluss betreffen würde. */
-export function zaehleAbzuschliessendeTermine(state: AppState, stichtag: string): number {
+/** Wie viele noch nicht archivierte Termine (Datum <= Stichtag) ein Halbjahresabschluss betreffen würde. */
+export function zaehleZuArchivierendeTermine(state: AppState, stichtag: string): number {
   let n = 0
   for (const g of state.gruppen) {
     for (const a of g.aktivitaeten) {
-      if (a.datum <= stichtag && !a.abgeschlossen) n++
+      if (a.datum <= stichtag && !a.archiviert) n++
     }
   }
   return n
 }
 
 /**
- * Schliesst alle Termine bis (und mit) dem Stichtag ab — dieselbe Sperre wie beim
- * einzelnen «Abschliessen» (TerminDetail): keine Anwesenheit mehr bearbeitbar, und
- * die Termine wandern in der Gruppenübersicht automatisch von «Aktuell» zu «Abgeschlossen».
+ * Archiviert alle Termine bis (und mit) dem Stichtag — unabhängig vom Trainer-Status
+ * `abgeschlossen`. Das ist eine eigene, stärkere Sperre: nur der Admin kann sie über
+ * TerminDetail wieder aufheben, Trainer können mit «Wieder öffnen» daran nichts ändern.
  */
-export function terminAbschliessenBisStichtag(state: AppState, stichtag: string): { state: AppState; anzahl: number } {
+export function terminArchivierenBisStichtag(state: AppState, stichtag: string): { state: AppState; anzahl: number } {
   const neu: AppState = structuredClone(state)
   let anzahl = 0
   for (const g of neu.gruppen) {
     for (const a of g.aktivitaeten) {
-      if (a.datum <= stichtag && !a.abgeschlossen) {
-        a.abgeschlossen = true
+      if (a.datum <= stichtag && !a.archiviert) {
+        a.archiviert = true
         anzahl++
       }
     }

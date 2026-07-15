@@ -60,6 +60,7 @@ function terminZeile(gruppe: Gruppe, t: TerminGruppe) {
 function TermineSektionen({ gruppe }: { gruppe: Gruppe }) {
   const [alleAktuelle, setAlleAktuelle] = useState(false)
   const [alleAbgeschlossene, setAlleAbgeschlossene] = useState(false)
+  const [alleArchivierte, setAlleArchivierte] = useState(false)
 
   const gruppen = terminGruppen(gruppe)
   if (gruppen.length === 0) {
@@ -71,9 +72,13 @@ function TermineSektionen({ gruppe }: { gruppe: Gruppe }) {
     )
   }
 
-  const aktuelle = gruppen.filter(t => !t.haupt.abgeschlossen)
+  // Archiviert (nur Admin, per Halbjahresabschluss) übersteuert die Trainer-eigene
+  // abgeschlossen-Einteilung — ein archivierter Termin gehört immer in diese Sektion.
+  const aktuelle = gruppen.filter(t => !t.haupt.abgeschlossen && !t.haupt.archiviert)
     .sort((a, b) => a.haupt.datum.localeCompare(b.haupt.datum) || (a.haupt.zeit ?? '').localeCompare(b.haupt.zeit ?? ''))
-  const abgeschlossene = gruppen.filter(t => t.haupt.abgeschlossen)
+  const abgeschlossene = gruppen.filter(t => t.haupt.abgeschlossen && !t.haupt.archiviert)
+    .sort((a, b) => b.haupt.datum.localeCompare(a.haupt.datum) || (b.haupt.zeit ?? '').localeCompare(a.haupt.zeit ?? ''))
+  const archivierte = gruppen.filter(t => t.haupt.archiviert)
     .sort((a, b) => b.haupt.datum.localeCompare(a.haupt.datum) || (b.haupt.zeit ?? '').localeCompare(a.haupt.zeit ?? ''))
 
   return (
@@ -98,6 +103,18 @@ function TermineSektionen({ gruppe }: { gruppe: Gruppe }) {
       )}
       {!alleAbgeschlossene && abgeschlossene.length > 5 && (
         <div className="btnreihe"><button className="leise breit" onClick={() => setAlleAbgeschlossene(true)}>{abgeschlossene.length - 5} weitere anzeigen</button></div>
+      )}
+
+      {archivierte.length > 0 && (
+        <>
+          <h2 className="abschnitt">Archivierte Termine</h2>
+          <div className="karte" style={{ padding: '0.2rem 1rem' }}>
+            {(alleArchivierte ? archivierte : archivierte.slice(0, 5)).map(t => terminZeile(gruppe, t))}
+          </div>
+          {!alleArchivierte && archivierte.length > 5 && (
+            <div className="btnreihe"><button className="leise breit" onClick={() => setAlleArchivierte(true)}>{archivierte.length - 5} weitere anzeigen</button></div>
+          )}
+        </>
       )}
     </>
   )

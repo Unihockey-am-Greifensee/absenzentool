@@ -224,7 +224,15 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
               <F label="PLZ" anzeige={p.plz ?? ''}><input {...feld('plz')} /></F>
               <F label="Ort" anzeige={p.ort ?? ''}><input {...feld('ort')} /></F>
               <F label="Land (ISO)" anzeige={p.land ?? ''}><input {...feld('land')} placeholder="CH" /></F>
+            </div>
+            <h2 className="abschnitt">Kontakt</h2>
+            <div className="felder2">
               <F label="E-Mail" anzeige={p.email ?? ''}><input {...feld('email')} /></F>
+              <F label="Mobiltelefon" anzeige={p.mobil ?? ''}><input {...feld('mobil')} /></F>
+              <F label="E-Mail Mutter" anzeige={p.emailMutter ?? ''}><input {...feld('emailMutter')} /></F>
+              <F label="Handy Mutter" anzeige={p.mobilMutter ?? ''}><input {...feld('mobilMutter')} /></F>
+              <F label="E-Mail Vater" anzeige={p.emailVater ?? ''}><input {...feld('emailVater')} /></F>
+              <F label="Handy Vater" anzeige={p.mobilVater ?? ''}><input {...feld('mobilVater')} /></F>
             </div>
             {!istTrainer && <button className="breit" onClick={speichern}>Speichern</button>}
           </div>

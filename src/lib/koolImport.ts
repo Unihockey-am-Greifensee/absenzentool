@@ -130,23 +130,45 @@ function personenSchluessel(p: { ahvNr?: string; vorname: string; nachname: stri
 
 export type MergeFeld =
   | 'vorname' | 'nachname' | 'strasse' | 'hausnummer' | 'plz' | 'ort' | 'land'
-  | 'ahvNr' | 'email' | 'geschlecht' | 'geburtsdatum' | 'jsNummer'
+  | 'ahvNr' | 'email' | 'mobil' | 'emailMutter' | 'emailVater' | 'mobilMutter' | 'mobilVater'
+  | 'geschlecht' | 'geburtsdatum' | 'jsNummer'
 
 export const MERGE_FELDER: MergeFeld[] = [
   'vorname', 'nachname', 'strasse', 'hausnummer', 'plz', 'ort', 'land',
-  'ahvNr', 'email', 'geschlecht', 'geburtsdatum', 'jsNummer',
+  'ahvNr', 'email', 'mobil', 'emailMutter', 'emailVater', 'mobilMutter', 'mobilVater',
+  'geschlecht', 'geburtsdatum', 'jsNummer',
 ]
 
 export const MERGE_FELD_LABEL: Record<MergeFeld, string> = {
   vorname: 'Vorname', nachname: 'Nachname', strasse: 'Strasse', hausnummer: 'Hausnummer',
-  plz: 'PLZ', ort: 'Ort', land: 'Land', ahvNr: 'AHV-Nummer', email: 'E-Mail',
+  plz: 'PLZ', ort: 'Ort', land: 'Land', ahvNr: 'AHV-Nummer', email: 'E-Mail', mobil: 'Mobiltelefon',
+  emailMutter: 'E-Mail Mutter', emailVater: 'E-Mail Vater', mobilMutter: 'Handy Mutter', mobilVater: 'Handy Vater',
   geschlecht: 'Geschlecht', geburtsdatum: 'Geburtsdatum', jsNummer: 'J+S-Nummer',
 }
 
 interface PersonKandidat {
   vorname: string; nachname: string
   strasse?: string; hausnummer?: string; plz?: string; ort?: string; land?: string
-  ahvNr?: string; email?: string; geschlecht?: 'm' | 'w'; geburtsdatum?: string; jsNummer?: string
+  ahvNr?: string; email?: string; mobil?: string
+  emailMutter?: string; emailVater?: string; mobilMutter?: string; mobilVater?: string
+  geschlecht?: 'm' | 'w'; geburtsdatum?: string; jsNummer?: string
+}
+
+function alsListe(v: unknown): string[] {
+  const s = alsText(v)
+  return s ? s.split(/[,;]/).map(x => x.trim()).filter(Boolean) : []
+}
+
+/**
+ * Die kOOL-Spalte "E-Mail" listet manchmal mehrere Adressen kommagetrennt in einem
+ * Feld (eigene + Eltern-Adressen), obwohl "E-Mail 2"/"E-Mail 3" die Eltern-Adressen
+ * bereits separat liefern. Treffer von E-Mail 2/3 werden daher aus der Hauptliste
+ * entfernt, damit das eigene E-Mail-Feld wirklich nur die eigene Adresse enthält.
+ */
+function eigeneEmail(hauptfeld: unknown, emailMutter: string | undefined, emailVater: string | undefined): string | undefined {
+  const ausschluss = new Set([emailMutter, emailVater].filter((x): x is string => !!x).map(x => x.toLowerCase()))
+  const liste = alsListe(hauptfeld).filter(e => !ausschluss.has(e.toLowerCase()))
+  return liste.length > 0 ? liste.join(', ') : undefined
 }
 
 function kandidatVonZeile(zeile: KoolZeile): PersonKandidat | null {
@@ -154,13 +176,20 @@ function kandidatVonZeile(zeile: KoolZeile): PersonKandidat | null {
   const nachname = alsText(feld(zeile, 'Nachname', 'Name'))
   if (!vorname || !nachname) return null
   const { strasse, hausnummer } = adresseTeilen(alsText(feld(zeile, 'Adresse', 'Strasse')))
+  const emailMutter = alsText(feld(zeile, 'E-Mail 2'))
+  const emailVater = alsText(feld(zeile, 'E-Mail 3'))
   return {
     vorname, nachname, strasse, hausnummer,
     plz: alsText(feld(zeile, 'Postleitzahl', 'PLZ')),
     ort: alsText(feld(zeile, 'Ort')),
     land: normLand(alsText(feld(zeile, 'Land'))) ?? 'CH',
     ahvNr: normAhv(alsText(feld(zeile, 'AHV-Nummer', 'AHV-Nr', 'AHV'))),
-    email: alsText(feld(zeile, 'E-Mail', 'Email')),
+    email: eigeneEmail(feld(zeile, 'E-Mail', 'Email'), emailMutter, emailVater),
+    mobil: alsText(feld(zeile, 'Mobiltelefon', 'Mobile', 'Handy')),
+    emailMutter,
+    emailVater,
+    mobilMutter: alsText(feld(zeile, 'Mobile 2', 'Handy 2')),
+    mobilVater: alsText(feld(zeile, 'Mobile 3', 'Handy 3')),
     geschlecht: normGeschlecht(alsText(feld(zeile, 'Geschlecht'))),
     geburtsdatum: isoDatum(feld(zeile, 'Geburtsdatum')),
     jsNummer: alsText(feld(zeile, 'J+S-Nummer', 'JS-Nummer', 'Personennummer')),

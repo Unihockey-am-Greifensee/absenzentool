@@ -82,7 +82,8 @@ export function ImportView({ state, update }: { state: AppState; update: Update 
         <div className="karte">
           <p style={{ marginTop: 0 }}>
             Lade hier den <b>kOOL-Export</b> hoch (Excel-Datei mit den Spalten Vorname, Nachname, Adresse,
-            PLZ, Ort, Land, AHV-Nummer, E-Mail, Geschlecht, Geburtsdatum, J+S-Nummer, Teams).
+            PLZ, Ort, Land, AHV-Nummer, Mobiltelefon, E-Mail (+ optional E-Mail 2/3 für Mutter/Vater,
+            Mobile 2/3 für deren Handynummern), Geschlecht, Geburtsdatum, J+S-Nummer, Teams).
           </p>
           <p className="sub" style={{ color: 'var(--muted)' }}>
             Der Import gleicht über AHV-Nummer bzw. Name + Geburtsdatum ab: Bestehende Personen werden
