@@ -24,10 +24,13 @@ export interface Person {
   quelle: 'kool' | 'manuell'
 }
 
+export type MitgliedStatus = 'aktiv' | 'schnuppernd' | 'archiviert'
+
 export interface Mitglied {
   personId: string
-  funktion: Funktion
+  funktion: Funktion // bleibt die NDS-relevante Rolle (Teilnehmer/in/Leiter/in) — unabhängig vom Status
   rolle?: string // Original-Rolle aus kOOL (SpielerIn, Headcoach, …)
+  status?: MitgliedStatus // fehlt = 'aktiv' (Altbestand vor Einführung des Feldes)
 }
 
 export interface Aktivitaet {

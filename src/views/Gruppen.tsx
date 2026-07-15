@@ -1,6 +1,7 @@
 import type { AppState } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
 import { heute } from '../lib/datum'
+import { aktiveMitglieder } from '../lib/mitglieder'
 
 export function GruppenListe({ state }: { state: AppState; update: Update }) {
   const benutzer = useBenutzer()
@@ -34,7 +35,7 @@ export function GruppenListe({ state }: { state: AppState; update: Update }) {
           <a className="karte" key={g.id} href={'#/gruppe/' + g.id}>
             <h3>{g.name}</h3>
             <div className="sub">
-              {g.mitglieder.length} Mitglieder · {erfasst} Trainings erfasst
+              {aktiveMitglieder(g).length} Mitglieder · {erfasst} Trainings erfasst
               {offen > 0 && <> · <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{offen} offen</span></>}
             </div>
           </a>

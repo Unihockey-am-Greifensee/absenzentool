@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { AppState, Person } from '../types'
 import { neueId } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
+import { statusVon } from '../lib/mitglieder'
 
 export function PersonenListe({ state }: { state: AppState }) {
   const benutzer = useBenutzer()
@@ -150,13 +151,16 @@ function PersonGruppen({ state, update, person }: { state: AppState; update: Upd
     ? state.gruppen.filter(g => g.trainerEmails?.includes(benutzer.email!.toLowerCase()))
     : state.gruppen
 
+  // Entfernen archiviert nur (Anwesenheiten bleiben für den NDS-Export erhalten) —
+  // endgültig löschen kann nur der Master, direkt in der Gruppe unter «Archiviert».
   const toggle = (gruppeId: string) =>
     update(s => {
       const n = structuredClone(s)
       const g = n.gruppen.find(x => x.id === gruppeId)!
-      const idx = g.mitglieder.findIndex(m => m.personId === person.id)
-      if (idx >= 0) g.mitglieder.splice(idx, 1)
-      else g.mitglieder.push({ personId: person.id, funktion: 'Teilnehmer/in' })
+      const m = g.mitglieder.find(x => x.personId === person.id)
+      if (m && statusVon(m) !== 'archiviert') m.status = 'archiviert'
+      else if (m) m.status = undefined
+      else g.mitglieder.push({ personId: person.id, funktion: 'Teilnehmer/in', status: 'aktiv' })
       return n
     })
 
@@ -169,11 +173,16 @@ function PersonGruppen({ state, update, person }: { state: AppState; update: Upd
       )}
       {[...gruppen].sort((a, b) => a.name.localeCompare(b.name, 'de')).map(g => {
         const mitglied = g.mitglieder.find(m => m.personId === person.id)
+        const aktiv = mitglied && statusVon(mitglied) !== 'archiviert'
         return (
           <div key={g.id} className="zeile" style={{ cursor: 'pointer' }} onClick={() => toggle(g.id)}>
-            <span className={'check' + (mitglied ? ' an' : '')}>✓</span>
-            <div className="haupt"><div className="titel">{g.name}</div></div>
+            <span className={'check' + (aktiv ? ' an' : '')}>✓</span>
+            <div className="haupt">
+              <div className="titel">{g.name}</div>
+              {mitglied && !aktiv && <div className="sub">archiviert</div>}
+            </div>
             {mitglied?.funktion === 'Leiter/in' && <span className="pill leiter">Leiter/in</span>}
+            {mitglied && statusVon(mitglied) === 'schnuppernd' && <span className="pill offen">Schnuppern</span>}
           </div>
         )
       })}

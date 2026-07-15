@@ -1,6 +1,7 @@
 import type { Aktivitaet, AppState } from '../types'
 import { Seite, type Update } from '../App'
 import { chDatumKurz } from './GruppeDetail'
+import { aktiveMitglieder, statusVon } from '../lib/mitglieder'
 
 export function TerminDetail({ state, update, gruppeId, terminId }: {
   state: AppState; update: Update; gruppeId: string; terminId: string
@@ -11,7 +12,7 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
     return <Seite titel="Termin nicht gefunden" zurueck="" tab="gruppen"><div className="leer">Dieser Termin existiert nicht (mehr).</div></Seite>
   }
   const personById = new Map(state.personen.map(p => [p.id, p]))
-  const mitglieder = [...gruppe.mitglieder].sort((a, b) => {
+  const mitglieder = aktiveMitglieder(gruppe).sort((a, b) => {
     if (a.funktion !== b.funktion) return a.funktion === 'Leiter/in' ? -1 : 1
     const pa = personById.get(a.personId), pb = personById.get(b.personId)
     return (pa?.nachname ?? '').localeCompare(pb?.nachname ?? '', 'de')
@@ -49,7 +50,7 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
         <>
           <div className="btnreihe">
             <button className="sekundaer" onClick={() => mutiere(a => {
-              for (const m of gruppe.mitglieder) a.anwesenheit[m.personId] = true
+              for (const m of mitglieder) a.anwesenheit[m.personId] = true
               a.status = 'durchgefuehrt'
             })}>Alle anwesend</button>
             <button className="leise" onClick={() => mutiere(a => { a.anwesenheit = {}; a.status = 'geplant' })}>Zurücksetzen</button>
@@ -75,6 +76,7 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
                 {m.funktion === 'Leiter/in' && <div className="sub">{m.rolle ?? 'Leiter/in'}</div>}
               </div>
               {m.funktion === 'Leiter/in' && <span className="pill leiter">Leiter/in</span>}
+              {statusVon(m) === 'schnuppernd' && <span className="pill offen">Schnuppern</span>}
             </div>
           )
         })}
