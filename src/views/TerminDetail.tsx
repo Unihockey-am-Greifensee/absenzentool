@@ -29,7 +29,8 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
   const personById = new Map(state.personen.map(p => [p.id, p]))
   const nachName = (a: Mitglied, b: Mitglied) =>
     (personById.get(a.personId)?.nachname ?? '').localeCompare(personById.get(b.personId)?.nachname ?? '', 'de')
-  const aktive = aktiveMitglieder(gruppe)
+  // Global archivierte Personen (Personen-Archiv) tauchen in keiner Gruppe/Absenzenliste mehr auf.
+  const aktive = aktiveMitglieder(gruppe).filter(m => !personById.get(m.personId)?.archiviert)
   const coach = aktive.filter(m => statusVon(m) === 'aktiv' && m.funktion === 'Leiter/in').sort(nachName)
   const team = aktive.filter(m => statusVon(m) === 'aktiv' && m.funktion === 'Teilnehmer/in').sort(nachName)
   const schnuppernde = aktive.filter(m => statusVon(m) === 'schnuppernd').sort(nachName)

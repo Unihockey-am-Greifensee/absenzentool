@@ -24,6 +24,7 @@ export interface Person {
   muttersprache?: string // DE | FR | IT | Andere
   email?: string
   quelle: 'kool' | 'manuell'
+  archiviert?: boolean // Admin hat die Person global archiviert — ausgeblendet, aber noch nicht endgültig gelöscht
 }
 
 export type MitgliedStatus = 'aktiv' | 'schnuppernd' | 'archiviert'

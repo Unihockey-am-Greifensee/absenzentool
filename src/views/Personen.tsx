@@ -3,26 +3,31 @@ import type { AppState, Person } from '../types'
 import { neueId } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
 import { statusVon } from '../lib/mitglieder'
+import { istAnwesend } from '../lib/anwesenheit'
 import { aktuelleSaison, fotosVonPerson } from '../lib/saison'
 import { komprimiertesFoto } from '../lib/foto'
 
 export function PersonenListe({ state }: { state: AppState }) {
   const benutzer = useBenutzer()
+  const istAdmin = benutzer.rolle !== 'trainer'
   const [suche, setSuche] = useState('')
-  const gefiltert = state.personen
+  const aktive = state.personen.filter(p => !p.archiviert)
+  const gefiltert = aktive
     .filter(p => `${p.vorname} ${p.nachname}`.toLowerCase().includes(suche.trim().toLowerCase()))
     .sort((a, b) => a.nachname.localeCompare(b.nachname, 'de') || a.vorname.localeCompare(b.vorname, 'de'))
+  const archivAnzahl = state.personen.length - aktive.length
 
   return (
     <Seite titel="Personen" tab="personen">
       <input className="suchfeld" placeholder="Suchen …" value={suche} onChange={e => setSuche(e.target.value)} />
-      {benutzer.rolle !== 'trainer' && (
+      {istAdmin && (
         <div className="btnreihe" style={{ marginTop: 0 }}>
           <a className="btn sekundaer" href="#/person/neu">+ Neue Person</a>
+          {archivAnzahl > 0 && <a className="btn leise" href="#/personen-archiv">Archiv ({archivAnzahl})</a>}
         </div>
       )}
       <div className="sub" style={{ marginBottom: '0.5rem', color: 'var(--muted)' }}>
-        {gefiltert.length} von {state.personen.length} Personen
+        {gefiltert.length} von {aktive.length} Personen
       </div>
       <div className="karte" style={{ padding: '0.2rem 1rem' }}>
         {gefiltert.slice(0, 100).map(p => (
@@ -39,6 +44,59 @@ export function PersonenListe({ state }: { state: AppState }) {
           </a>
         ))}
         {gefiltert.length > 100 && <div className="sub" style={{ padding: '0.5rem 0' }}>… {gefiltert.length - 100} weitere — Suche verfeinern.</div>}
+      </div>
+    </Seite>
+  )
+}
+
+export function PersonenArchiv({ state, update }: { state: AppState; update: Update }) {
+  const archivierte = state.personen
+    .filter(p => p.archiviert)
+    .sort((a, b) => a.nachname.localeCompare(b.nachname, 'de') || a.vorname.localeCompare(b.vorname, 'de'))
+
+  const reaktivieren = (personId: string) =>
+    update(s => {
+      const n = structuredClone(s)
+      delete n.personen.find(p => p.id === personId)!.archiviert
+      return n
+    })
+
+  const endgueltigLoeschen = (person: Person) => {
+    const betroffen = state.gruppen.some(g => g.aktivitaeten.some(a => istAnwesend(a.anwesenheit[person.id])))
+    const frage = betroffen
+      ? `${person.vorname} ${person.nachname} hat erfasste Anwesenheiten. Beim endgültigen Löschen gehen diese Einträge für den NDS-Export unwiderruflich verloren. Trotzdem endgültig löschen?`
+      : `${person.vorname} ${person.nachname} endgültig löschen? Das kann nicht rückgängig gemacht werden.`
+    if (!confirm(frage)) return
+    update(s => {
+      const n = structuredClone(s)
+      n.personen = n.personen.filter(x => x.id !== person.id)
+      n.fotos = n.fotos.filter(f => f.personId !== person.id)
+      for (const g of n.gruppen) {
+        g.mitglieder = g.mitglieder.filter(m => m.personId !== person.id)
+        for (const a of g.aktivitaeten) delete a.anwesenheit[person.id]
+      }
+      return n
+    })
+  }
+
+  return (
+    <Seite titel="Personen-Archiv" zurueck="personen" tab="personen">
+      <div className="hinweis info">
+        Archivierte Personen sind aus der Personen-Liste und allen Gruppen ausgeblendet, aber noch nicht
+        gelöscht. Erst «Endgültig löschen» entfernt die Person und alle ihre Anwesenheiten/Fotos ohne Rückstände.
+      </div>
+      <div className="karte" style={{ padding: '0.2rem 1rem' }}>
+        {archivierte.length === 0 && <div className="sub" style={{ padding: '0.6rem 0' }}>Das Archiv ist leer.</div>}
+        {archivierte.map(p => (
+          <div key={p.id} className="zeile">
+            <div className="haupt">
+              <div className="titel">{p.vorname} {p.nachname}</div>
+              <div className="sub">{[p.geburtsdatum, p.ort].filter(Boolean).join(' · ') || '—'}</div>
+            </div>
+            <button className="sekundaer" onClick={() => reaktivieren(p.id)}>Reaktivieren</button>
+            <button className="leise" onClick={() => endgueltigLoeschen(p)}>Endgültig löschen</button>
+          </div>
+        ))}
       </div>
     </Seite>
   )
@@ -82,6 +140,24 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
     window.location.hash = '#/personen'
   }
 
+  const archivieren = () => {
+    if (!confirm(`${p.vorname} ${p.nachname} ins Archiv verschieben? Sie verschwindet aus der Personen-Liste und allen Gruppen, bleibt aber erhalten und lässt sich im Archiv wiederherstellen.`)) return
+    update(s => {
+      const n = structuredClone(s)
+      n.personen.find(x => x.id === p.id)!.archiviert = true
+      return n
+    })
+    window.location.hash = '#/personen'
+  }
+
+  const reaktivieren = () =>
+    update(s => {
+      const n = structuredClone(s)
+      delete n.personen.find(x => x.id === p.id)!.archiviert
+      setP({ ...p, archiviert: undefined })
+      return n
+    })
+
   const geschlechtAnzeige = p.geschlecht === 'm' ? 'männlich' : p.geschlecht === 'w' ? 'weiblich' : ''
   const F = ({ label, anzeige, children }: { label: string; anzeige: string; children: React.ReactNode }) => (
     <label className="feld">{label}
@@ -103,6 +179,14 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
         <>
           {p.quelle === 'kool' && !istTrainer && (
             <div className="hinweis info">Diese Person stammt aus dem kOOL-Import. Änderungen werden beim nächsten Import durch kOOL-Werte ergänzt, nicht überschrieben.</div>
+          )}
+          {p.archiviert && (
+            <div className="hinweis warnung">
+              Diese Person ist archiviert — ausgeblendet aus der Personen-Liste und allen Gruppen.
+              {!istTrainer && <div className="btnreihe" style={{ marginBottom: 0 }}>
+                <button className="sekundaer" onClick={reaktivieren}>Reaktivieren</button>
+              </div>}
+            </div>
           )}
           <div className="karte">
             <div className="felder2">
@@ -144,6 +228,11 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
             </div>
             {!istTrainer && <button className="breit" onClick={speichern}>Speichern</button>}
           </div>
+          {!istTrainer && !istNeu && !p.archiviert && (
+            <div className="btnreihe">
+              <button className="leise breit" onClick={archivieren}>Person archivieren</button>
+            </div>
+          )}
         </>
       )}
 

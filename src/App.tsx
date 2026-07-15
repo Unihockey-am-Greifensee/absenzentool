@@ -7,7 +7,7 @@ import { abonnieren, diffSchreiben, trainerAbonnieren, type TrainerInfo } from '
 import { GruppenListe } from './views/Gruppen'
 import { GruppeDetail } from './views/GruppeDetail'
 import { TerminDetail } from './views/TerminDetail'
-import { PersonenListe, PersonEdit } from './views/Personen'
+import { PersonenListe, PersonEdit, PersonenArchiv } from './views/Personen'
 import { ImportView } from './views/Import'
 import { ExportView } from './views/Export'
 import { LadeAnzeige, LoginView, NichtFreigeschaltet } from './views/Auth'
@@ -51,6 +51,7 @@ function Router({ state, update }: { state: AppState; update: Update }) {
   }
   if (seg[0] === 'gruppe' && seg[1]) return <GruppeDetail state={state} update={update} gruppeId={seg[1]} />
   if (seg[0] === 'personen') return <PersonenListe state={state} />
+  if (seg[0] === 'personen-archiv' && istMaster) return <PersonenArchiv state={state} update={update} />
   if (seg[0] === 'person' && seg[1]) return <PersonEdit state={state} update={update} personId={seg[1]} />
   if (seg[0] === 'import' && istMaster) return <ImportView state={state} update={update} />
   if (seg[0] === 'export' && istMaster) return <AdminHub update={update} />

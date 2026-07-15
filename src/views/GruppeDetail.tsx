@@ -115,11 +115,14 @@ function MitgliederSektionen({ state, update, gruppeId }: { state: AppState; upd
   const personById = new Map(state.personen.map(p => [p.id, p]))
   const nachName = (a: Mitglied, b: Mitglied) =>
     nameVon(personById, a.personId).localeCompare(nameVon(personById, b.personId), 'de')
+  // Global archivierte Personen (Personen-Archiv) verschwinden aus allen Gruppen — sie haben
+  // dort keine eigene Sichtbarkeit mehr, unabhängig vom Mitglied-Status in dieser Gruppe.
+  const nichtGlobalArchiviert = (m: Mitglied) => !personById.get(m.personId)?.archiviert
 
-  const coach = gruppe.mitglieder.filter(m => statusVon(m) === 'aktiv' && m.funktion === 'Leiter/in').sort(nachName)
-  const team = gruppe.mitglieder.filter(m => statusVon(m) === 'aktiv' && m.funktion === 'Teilnehmer/in').sort(nachName)
-  const schnuppernde = gruppe.mitglieder.filter(m => statusVon(m) === 'schnuppernd').sort(nachName)
-  const archiviert = gruppe.mitglieder.filter(m => statusVon(m) === 'archiviert').sort(nachName)
+  const coach = gruppe.mitglieder.filter(m => statusVon(m) === 'aktiv' && m.funktion === 'Leiter/in' && nichtGlobalArchiviert(m)).sort(nachName)
+  const team = gruppe.mitglieder.filter(m => statusVon(m) === 'aktiv' && m.funktion === 'Teilnehmer/in' && nichtGlobalArchiviert(m)).sort(nachName)
+  const schnuppernde = gruppe.mitglieder.filter(m => statusVon(m) === 'schnuppernd' && nichtGlobalArchiviert(m)).sort(nachName)
+  const archiviert = gruppe.mitglieder.filter(m => statusVon(m) === 'archiviert' && nichtGlobalArchiviert(m)).sort(nachName)
 
   const archivieren = (personId: string) =>
     update(s => {
