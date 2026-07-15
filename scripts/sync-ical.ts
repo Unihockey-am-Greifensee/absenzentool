@@ -6,10 +6,13 @@
 // Termine (aus dem Kalender entfernte Einträge). Das bleibt eine bewusste
 // Entscheidung eines Trainers/Masters im Browser («Jetzt synchronisieren» dort
 // zeigt die Rückfrage). Ein automatisierter Job soll nie unbeaufsichtigt löschen.
+//
+// Synchronisiert werden nur zukünftige Termine (ab heute) — die Feeds reichen oft
+// ein bis zwei Saisons zurück, Vergangenes braucht die Anwesenheitserfassung nicht.
 
 import { cert, initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
-import { icsMergen, parseIcs } from '../src/lib/icsImport'
+import { icsMergen, nurZukuenftig, parseIcs } from '../src/lib/icsImport'
 import type { Aktivitaet, AppState, IcalQuelle } from '../src/types'
 
 function ohneUndefined<T extends Record<string, unknown>>(obj: T): T {
@@ -45,7 +48,9 @@ async function main() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const events = parseIcs(await res.text())
         if (events.length === 0) throw new Error('keine Termine im Feed')
-        const { state: neu, ergebnis } = icsMergen(arbeitsState, gDoc.id, events, q.typ)
+        // Nur zukünftige Termine synchronisieren, wie im Browser-Sync auch.
+        const zukuenftig = nurZukuenftig(events)
+        const { state: neu, ergebnis } = icsMergen(arbeitsState, gDoc.id, zukuenftig, q.typ)
         arbeitsState = neu
         gesamtNeu += ergebnis.neu
         gesamtAktualisiert += ergebnis.aktualisiert

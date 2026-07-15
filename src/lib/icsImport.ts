@@ -1,6 +1,7 @@
 import type { Aktivitaet, Aktivitaetstyp, AppState, Gruppe } from '../types'
 import { neueId } from '../types'
 import { ICAL_PROXY_URL } from '../config/icalProxy'
+import { heute } from './datum'
 
 // iCal-Import: parst .ics-Feeds (z. B. Google Calendar / kOOL) und gleicht die
 // Termine über die iCal-UID mit einer Gruppe ab. Termine, die ein Mensch schon
@@ -112,6 +113,15 @@ export function typErkennen(ev: IcsEvent, standard: Aktivitaetstyp): Aktivitaets
   return standard
 }
 
+/**
+ * Die Feeds reichen oft ein bis zwei Saisons zurück. Vergangene Trainings sind für
+ * die Anwesenheitserfassung uninteressant und blähen die Terminliste nur auf —
+ * daher synchronisieren wir grundsätzlich nur ab dem übergebenen Datum (Default: heute).
+ */
+export function nurZukuenftig(events: IcsEvent[], abDatum: string = heute()): IcsEvent[] {
+  return events.filter(ev => ev.datum >= abDatum)
+}
+
 /** Gleicht geparste Events mit den Aktivitäten einer Gruppe ab (Kopie wird zurückgegeben). */
 export function icsMergen(
   state: AppState,
@@ -176,9 +186,14 @@ export function icsMergen(
  * merkt das nicht — es sieht nur, was im Feed steht. Diese Funktion vergleicht
  * gegen die Menge der beim Sync tatsächlich gesehenen UIDs. Bereits als «abgesagt»
  * markierte Termine werden nicht nochmals gemeldet.
+ *
+ * Da der Sync nur ab `abDatum` (Default: heute) im Feed nachschaut, dürfen ältere
+ * Termine hier nie auftauchen — sie wurden ja absichtlich nicht mehr abgeglichen,
+ * «verwaist» wären sie also fälschlicherweise immer.
  */
-export function verwaisteTermine(gruppe: Gruppe, gesehenUids: Set<string>): Aktivitaet[] {
-  return gruppe.aktivitaeten.filter(a => a.icalUid && a.status !== 'abgesagt' && !gesehenUids.has(a.icalUid))
+export function verwaisteTermine(gruppe: Gruppe, gesehenUids: Set<string>, abDatum: string = heute()): Aktivitaet[] {
+  return gruppe.aktivitaeten.filter(a =>
+    a.icalUid && a.status !== 'abgesagt' && a.datum >= abDatum && !gesehenUids.has(a.icalUid))
 }
 
 /**

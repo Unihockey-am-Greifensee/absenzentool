@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { AppState, Aktivitaet, Aktivitaetstyp } from '../types'
 import { neueId } from '../types'
 import type { Update } from '../App'
-import { fetchUrl, icsMergen, parseIcs, verwaisteTermine, type IcsSyncErgebnis } from '../lib/icsImport'
+import { fetchUrl, icsMergen, nurZukuenftig, parseIcs, verwaisteTermine, type IcsSyncErgebnis } from '../lib/icsImport'
 import { ICAL_VORLAGEN } from '../config/icalVorlagen'
 import { chDatumKurz } from './GruppeDetail'
 
@@ -48,8 +48,11 @@ export function KalenderSektion({ state, update, gruppeId }: { state: AppState; 
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const events = parseIcs(await res.text())
         if (events.length === 0) throw new Error('keine Termine im Feed')
-        events.forEach(e => gesehenUids.add(e.uid))
-        const { state: neu, ergebnis } = icsMergen(aktuell, gruppeId, events, q.typ)
+        // Nur zukünftige Termine synchronisieren — die Feeds reichen oft ein bis
+        // zwei Saisons zurück, Vergangenes brauchen wir für die Erfassung nicht.
+        const zukuenftig = nurZukuenftig(events)
+        zukuenftig.forEach(e => gesehenUids.add(e.uid))
+        const { state: neu, ergebnis } = icsMergen(aktuell, gruppeId, zukuenftig, q.typ)
         aktuell = neu
         gesamt = summe(gesamt, ergebnis)
       } catch (e) {
@@ -98,7 +101,7 @@ export function KalenderSektion({ state, update, gruppeId }: { state: AppState; 
   const icsDatei = async (file: File, typ: Aktivitaetstyp) => {
     const events = parseIcs(await file.text())
     if (events.length === 0) { setMeldung({ art: 'fehler', text: 'Keine Termine in der Datei gefunden.' }); return }
-    const { state: neu, ergebnis } = icsMergen(state, gruppeId, events, typ)
+    const { state: neu, ergebnis } = icsMergen(state, gruppeId, nurZukuenftig(events), typ)
     update(() => neu)
     setMeldung({ art: 'info', text: `Datei importiert: ${ergebnis.neu} neu, ${ergebnis.aktualisiert} aktualisiert, ${ergebnis.unveraendert} unverändert.` })
   }

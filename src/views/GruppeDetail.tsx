@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { AppState, Aktivitaet, Aktivitaetstyp, Funktion } from '../types'
 import { neueId } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
-import { heute } from './Gruppen'
+import { heute } from '../lib/datum'
 import { DAUER_TRAINING, DAUER_TRAININGSTAG } from '../lib/ndsExport'
 import { KalenderSektion } from './IcalSync'
 

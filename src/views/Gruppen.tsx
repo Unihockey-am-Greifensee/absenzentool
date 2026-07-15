@@ -1,6 +1,7 @@
 import type { AppState } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
 import { VorlagenKnopf } from './IcalSync'
+import { heute } from '../lib/datum'
 
 export function GruppenListe({ state, update }: { state: AppState; update: Update }) {
   const benutzer = useBenutzer()
@@ -49,9 +50,4 @@ export function GruppenListe({ state, update }: { state: AppState; update: Updat
       )}
     </Seite>
   )
-}
-
-export function heute(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
