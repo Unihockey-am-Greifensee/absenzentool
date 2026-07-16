@@ -41,7 +41,7 @@ export function GruppeDetail({ state, update, gruppeId }: { state: AppState; upd
   )
 }
 
-function terminZeile(gruppe: Gruppe, t: TerminGruppe) {
+export function terminZeile(gruppe: Gruppe, t: TerminGruppe) {
   const a = t.haupt
   const anwesend = Object.values(a.anwesenheit).filter(istAnwesend).length
   return (
@@ -59,9 +59,7 @@ function terminZeile(gruppe: Gruppe, t: TerminGruppe) {
 
 function TermineSektionen({ gruppe }: { gruppe: Gruppe }) {
   const [alleAktuelle, setAlleAktuelle] = useState(false)
-  const [alleKommende, setAlleKommende] = useState(false)
   const [alleAbgeschlossene, setAlleAbgeschlossene] = useState(false)
-  const [alleArchivierte, setAlleArchivierte] = useState(false)
 
   const gruppen = terminGruppen(gruppe)
   if (gruppen.length === 0) {
@@ -79,14 +77,13 @@ function TermineSektionen({ gruppe }: { gruppe: Gruppe }) {
   // erfasst werden muss. Zukünftige offene Termine kommen separat unter «Kommende».
   const aktuelle = gruppen.filter(t => offen(t) && t.haupt.datum <= heuteIso)
     .sort((a, b) => a.haupt.datum.localeCompare(b.haupt.datum) || (a.haupt.zeit ?? '').localeCompare(b.haupt.zeit ?? ''))
-  const kommende = gruppen.filter(t => offen(t) && t.haupt.datum > heuteIso)
-    .sort((a, b) => a.haupt.datum.localeCompare(b.haupt.datum) || (a.haupt.zeit ?? '').localeCompare(b.haupt.zeit ?? ''))
-  // Archiviert (nur Admin, per Halbjahresabschluss) übersteuert die Trainer-eigene
-  // abgeschlossen-Einteilung — ein archivierter Termin gehört immer in diese Sektion.
   const abgeschlossene = gruppen.filter(t => t.haupt.abgeschlossen && !t.haupt.archiviert)
     .sort((a, b) => b.haupt.datum.localeCompare(a.haupt.datum) || (b.haupt.zeit ?? '').localeCompare(a.haupt.zeit ?? ''))
-  const archivierte = gruppen.filter(t => t.haupt.archiviert)
-    .sort((a, b) => b.haupt.datum.localeCompare(a.haupt.datum) || (b.haupt.zeit ?? '').localeCompare(a.haupt.zeit ?? ''))
+  // Kommende (offen, zukünftig) und Archivierte (per Halbjahresabschluss) können durch den
+  // iCal-Sync sehr viele werden — daher nur zählen und auf eine eigene Seite verlinken, statt
+  // hier hunderte Zeilen zu rendern.
+  const kommendeAnzahl = gruppen.filter(t => offen(t) && t.haupt.datum > heuteIso).length
+  const archivierteAnzahl = gruppen.filter(t => t.haupt.archiviert).length
 
   return (
     <>
@@ -101,16 +98,10 @@ function TermineSektionen({ gruppe }: { gruppe: Gruppe }) {
         <div className="btnreihe"><button className="leise breit" onClick={() => setAlleAktuelle(true)}>{aktuelle.length - 5} weitere anzeigen</button></div>
       )}
 
-      {kommende.length > 0 && (
-        <>
-          <h2 className="abschnitt">Kommende Termine</h2>
-          <div className="karte" style={{ padding: '0.2rem 1rem' }}>
-            {(alleKommende ? kommende : kommende.slice(0, 5)).map(t => terminZeile(gruppe, t))}
-          </div>
-          {!alleKommende && kommende.length > 5 && (
-            <div className="btnreihe"><button className="leise breit" onClick={() => setAlleKommende(true)}>{kommende.length - 5} weitere anzeigen</button></div>
-          )}
-        </>
+      {kommendeAnzahl > 0 && (
+        <a className="btn sekundaer breit" href={`#/gruppe/${gruppe.id}/kommend`} style={{ marginTop: '0.9rem' }}>
+          Kommende Termine ({kommendeAnzahl}) ›
+        </a>
       )}
 
       <h2 className="abschnitt">Abgeschlossene Termine</h2>
@@ -124,16 +115,10 @@ function TermineSektionen({ gruppe }: { gruppe: Gruppe }) {
         <div className="btnreihe"><button className="leise breit" onClick={() => setAlleAbgeschlossene(true)}>{abgeschlossene.length - 5} weitere anzeigen</button></div>
       )}
 
-      {archivierte.length > 0 && (
-        <>
-          <h2 className="abschnitt">Archivierte Termine</h2>
-          <div className="karte" style={{ padding: '0.2rem 1rem' }}>
-            {(alleArchivierte ? archivierte : archivierte.slice(0, 5)).map(t => terminZeile(gruppe, t))}
-          </div>
-          {!alleArchivierte && archivierte.length > 5 && (
-            <div className="btnreihe"><button className="leise breit" onClick={() => setAlleArchivierte(true)}>{archivierte.length - 5} weitere anzeigen</button></div>
-          )}
-        </>
+      {archivierteAnzahl > 0 && (
+        <a className="btn sekundaer breit" href={`#/gruppe/${gruppe.id}/archiv`} style={{ marginTop: '0.9rem' }}>
+          Archivierte Termine ({archivierteAnzahl}) ›
+        </a>
       )}
     </>
   )
