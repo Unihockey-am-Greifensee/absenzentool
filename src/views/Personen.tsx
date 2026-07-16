@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { AppState, Person } from '../types'
 import { neueId } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
@@ -319,6 +319,39 @@ function PersonFotos({ state, update, person }: { state: AppState; update: Updat
     }
   }
 
+  // Bild aus der Zwischenablage einfügen: einmal per Knopf (Clipboard-API) und
+  // zusätzlich per Cmd/Strg+V (Paste-Event), beide landen bei hochladen().
+  const hochladenRef = useRef(hochladen)
+  hochladenRef.current = hochladen
+
+  const ausZwischenablage = async () => {
+    try {
+      const inhalte = await navigator.clipboard.read()
+      for (const eintrag of inhalte) {
+        const typ = eintrag.types.find(t => t.startsWith('image/'))
+        if (typ) {
+          const blob = await eintrag.getType(typ)
+          await hochladen(new File([blob], 'zwischenablage', { type: blob.type }))
+          return
+        }
+      }
+      alert('Kein Bild in der Zwischenablage gefunden. Kopiere zuerst ein Bild.')
+    } catch {
+      alert('Zwischenablage konnte nicht gelesen werden. Du kannst das Bild auch direkt mit Cmd/Strg+V einfügen.')
+    }
+  }
+
+  useEffect(() => {
+    if (!darfBearbeiten) return
+    const beiPaste = (e: ClipboardEvent) => {
+      const datei = [...(e.clipboardData?.items ?? [])]
+        .find(i => i.type.startsWith('image/'))?.getAsFile()
+      if (datei) { e.preventDefault(); void hochladenRef.current(datei) }
+    }
+    document.addEventListener('paste', beiPaste)
+    return () => document.removeEventListener('paste', beiPaste)
+  }, [darfBearbeiten])
+
   const löschen = (fotoId: string) =>
     update(s => ({ ...s, fotos: s.fotos.filter(f => f.id !== fotoId) }))
 
@@ -330,6 +363,13 @@ function PersonFotos({ state, update, person }: { state: AppState; update: Updat
             <input type="file" accept="image/*" disabled={lädt}
               onChange={e => { const f = e.target.files?.[0]; if (f) void hochladen(f); e.target.value = '' }} />
           </label>
+          <button type="button" className="sekundaer breit" disabled={lädt}
+            style={{ marginTop: '0.5rem' }} onClick={() => void ausZwischenablage()}>
+            📋 Aus Zwischenablage einfügen
+          </button>
+          <div className="sub" style={{ marginTop: '0.4rem' }}>
+            … oder das Bild direkt mit Cmd/Strg+V einfügen.
+          </div>
           {lädt && <div className="sub">Wird verarbeitet …</div>}
         </div>
       )}
