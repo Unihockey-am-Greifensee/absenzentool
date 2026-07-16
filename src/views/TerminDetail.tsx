@@ -34,6 +34,11 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
   const coach = aktive.filter(m => statusVon(m) === 'aktiv' && m.funktion === 'Leiter/in').sort(nachName)
   const team = aktive.filter(m => statusVon(m) === 'aktiv' && m.funktion === 'Teilnehmer/in').sort(nachName)
   const schnuppernde = aktive.filter(m => statusVon(m) === 'schnuppernd').sort(nachName)
+  // Archivierte (Mitglied oder global archivierte Person), die bei DIESEM Termin eine
+  // Anwesenheit haben — z. B. historische Importe. Tauchen sonst in keiner Liste mehr auf.
+  const archivierteTeilnehmer = gruppe.mitglieder
+    .filter(m => (statusVon(m) === 'archiviert' || !!personById.get(m.personId)?.archiviert) && termin.anwesenheit[m.personId] !== undefined)
+    .sort(nachName)
   const zaehlung = zaehleStatus(termin.anwesenheit, aktive.map(m => m.personId))
 
   // Wirkt auf alle Geschwister eines Wettkampf-Tages gleichzeitig (siehe lib/termine.ts) —
@@ -137,6 +142,7 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
       {gruppenBox('Coach', coach, 'Kein Coach in dieser Gruppe.')}
       {gruppenBox('Team', team, 'Keine Spieler/innen in dieser Gruppe.')}
       {gruppenBox('Schnuppernde', schnuppernde, 'Niemand am Schnuppern.')}
+      {archivierteTeilnehmer.length > 0 && gruppenBox('Archivierte Teilnehmer/innen', archivierteTeilnehmer, '')}
 
       {termin.archiviert ? (
         <div className="hinweis warnung">
