@@ -59,6 +59,7 @@ function terminZeile(gruppe: Gruppe, t: TerminGruppe) {
 
 function TermineSektionen({ gruppe }: { gruppe: Gruppe }) {
   const [alleAktuelle, setAlleAktuelle] = useState(false)
+  const [alleKommende, setAlleKommende] = useState(false)
   const [alleAbgeschlossene, setAlleAbgeschlossene] = useState(false)
   const [alleArchivierte, setAlleArchivierte] = useState(false)
 
@@ -72,10 +73,16 @@ function TermineSektionen({ gruppe }: { gruppe: Gruppe }) {
     )
   }
 
+  const heuteIso = heute()
+  const offen = (t: TerminGruppe) => !t.haupt.abgeschlossen && !t.haupt.archiviert
+  // Aktuell = offen UND heute oder abgelaufen: genau die, für die jetzt Anwesenheit
+  // erfasst werden muss. Zukünftige offene Termine kommen separat unter «Kommende».
+  const aktuelle = gruppen.filter(t => offen(t) && t.haupt.datum <= heuteIso)
+    .sort((a, b) => a.haupt.datum.localeCompare(b.haupt.datum) || (a.haupt.zeit ?? '').localeCompare(b.haupt.zeit ?? ''))
+  const kommende = gruppen.filter(t => offen(t) && t.haupt.datum > heuteIso)
+    .sort((a, b) => a.haupt.datum.localeCompare(b.haupt.datum) || (a.haupt.zeit ?? '').localeCompare(b.haupt.zeit ?? ''))
   // Archiviert (nur Admin, per Halbjahresabschluss) übersteuert die Trainer-eigene
   // abgeschlossen-Einteilung — ein archivierter Termin gehört immer in diese Sektion.
-  const aktuelle = gruppen.filter(t => !t.haupt.abgeschlossen && !t.haupt.archiviert)
-    .sort((a, b) => a.haupt.datum.localeCompare(b.haupt.datum) || (a.haupt.zeit ?? '').localeCompare(b.haupt.zeit ?? ''))
   const abgeschlossene = gruppen.filter(t => t.haupt.abgeschlossen && !t.haupt.archiviert)
     .sort((a, b) => b.haupt.datum.localeCompare(a.haupt.datum) || (b.haupt.zeit ?? '').localeCompare(a.haupt.zeit ?? ''))
   const archivierte = gruppen.filter(t => t.haupt.archiviert)
@@ -84,7 +91,7 @@ function TermineSektionen({ gruppe }: { gruppe: Gruppe }) {
   return (
     <>
       <h2 className="abschnitt">Aktuelle Termine</h2>
-      {aktuelle.length === 0 && <div className="sub" style={{ padding: '0 0.25rem 0.5rem' }}>Keine offenen Termine.</div>}
+      {aktuelle.length === 0 && <div className="sub" style={{ padding: '0 0.25rem 0.5rem' }}>Keine offenen Termine bis heute.</div>}
       {aktuelle.length > 0 && (
         <div className="karte" style={{ padding: '0.2rem 1rem' }}>
           {(alleAktuelle ? aktuelle : aktuelle.slice(0, 5)).map(t => terminZeile(gruppe, t))}
@@ -92,6 +99,18 @@ function TermineSektionen({ gruppe }: { gruppe: Gruppe }) {
       )}
       {!alleAktuelle && aktuelle.length > 5 && (
         <div className="btnreihe"><button className="leise breit" onClick={() => setAlleAktuelle(true)}>{aktuelle.length - 5} weitere anzeigen</button></div>
+      )}
+
+      {kommende.length > 0 && (
+        <>
+          <h2 className="abschnitt">Kommende Termine</h2>
+          <div className="karte" style={{ padding: '0.2rem 1rem' }}>
+            {(alleKommende ? kommende : kommende.slice(0, 5)).map(t => terminZeile(gruppe, t))}
+          </div>
+          {!alleKommende && kommende.length > 5 && (
+            <div className="btnreihe"><button className="leise breit" onClick={() => setAlleKommende(true)}>{kommende.length - 5} weitere anzeigen</button></div>
+          )}
+        </>
       )}
 
       <h2 className="abschnitt">Abgeschlossene Termine</h2>

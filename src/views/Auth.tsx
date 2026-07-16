@@ -1,10 +1,11 @@
 import { abmelden, googleAnmelden } from '../firebase'
+import logo from '../assets/grizzlys-logo.png'
 
 export function LoginView() {
   return (
-    <div className="app" style={{ paddingTop: '18vh', textAlign: 'center' }}>
-      <div style={{ fontSize: '3rem' }}>🏑</div>
-      <h1 style={{ margin: '0.5rem 0 0.25rem' }}>Absenzentool</h1>
+    <div className="app" style={{ paddingTop: '14vh', textAlign: 'center' }}>
+      <img src={logo} alt="Grizzlys – Unihockey am Greifensee" style={{ width: '7rem', height: '7rem', margin: '0 auto' }} />
+      <h1 style={{ margin: '0.75rem 0 0.25rem' }}>Absenzentool</h1>
       <p style={{ color: 'var(--muted)', maxWidth: '32ch', margin: '0 auto 1.5rem' }}>
         Anwesenheitskontrolle und J+S-Export für die Grizzlys.
       </p>
