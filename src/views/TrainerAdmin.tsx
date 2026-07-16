@@ -1,7 +1,12 @@
 import { useState } from 'react'
-import { trainerLoeschen, trainerSpeichern } from '../lib/firestoreSync'
+import { trainerLoeschen as fsLoeschen, trainerSpeichern as fsSpeichern } from '../lib/firestoreSync'
+import { trainerLoeschen as apiLoeschen, trainerSpeichern as apiSpeichern } from '../lib/apiSync'
+import { apiAktiv } from '../config/apiConfig'
 import { useTrainerListe } from '../lib/useTrainerListe'
 import { Seite } from '../App'
+
+const trainerSpeichern = apiAktiv ? apiSpeichern : fsSpeichern
+const trainerLoeschen = apiAktiv ? apiLoeschen : fsLoeschen
 
 export function TrainerAdmin({ eigeneEmail }: { eigeneEmail: string }) {
   const liste = useTrainerListe()

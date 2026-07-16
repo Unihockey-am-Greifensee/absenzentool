@@ -2,8 +2,11 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { onAuthStateChanged, type User } from 'firebase/auth'
 import type { AppState } from './types'
 import { loadState, saveState } from './storage'
-import { abmelden, auth, firebaseAktiv } from './firebase'
+import { abmelden as firebaseAbmelden, auth, firebaseAktiv } from './firebase'
 import { abonnieren, diffSchreiben, trainerAbonnieren, type TrainerInfo } from './lib/firestoreSync'
+import * as apiSync from './lib/apiSync'
+import { abmelden as apiAbmelden, meAbrufen } from './lib/apiAuth'
+import { apiAktiv } from './config/apiConfig'
 import { GruppenListe } from './views/Gruppen'
 import { GruppeDetail } from './views/GruppeDetail'
 import { TerminDetail } from './views/TerminDetail'
@@ -11,7 +14,7 @@ import { TermineListe } from './views/TermineListe'
 import { PersonenListe, PersonEdit, PersonenArchiv } from './views/Personen'
 import { ImportView } from './views/Import'
 import { ExportView } from './views/Export'
-import { LadeAnzeige, LoginView, NichtFreigeschaltet } from './views/Auth'
+import { ApiLoginView, ApiNichtFreigeschaltet, LadeAnzeige, LoginView, NichtFreigeschaltet } from './views/Auth'
 import { TrainerAdmin } from './views/TrainerAdmin'
 import { BackupView } from './views/Backup'
 import { AdminHub } from './views/Admin'
@@ -83,27 +86,34 @@ function LokalApp() {
   )
 }
 
-/** Firestore-Modus: Login, Freischaltung, Live-Sync. */
-function SyncApp({ info }: { info: TrainerInfo }) {
+interface Synchronisierung {
+  abonnieren: typeof abonnieren
+  diffSchreiben: typeof diffSchreiben
+}
+
+/** Login/Freischaltung erledigt der Aufrufer (Firebase oder API) — hier nur noch Live-Sync/Anzeige. */
+function SyncApp({ info, sync }: { info: TrainerInfo; sync: Synchronisierung }) {
   const istMaster = info.rolle === 'master'
   const [state, setState] = useState<AppState | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
   const aktuell = useRef<AppState | null>(null)
 
   useEffect(() => {
-    return abonnieren(istMaster, s => {
+    return sync.abonnieren(istMaster, s => {
       aktuell.current = s
       setState(s)
     }, f => setFehler(f))
-  }, [istMaster])
+    // sync.abonnieren ist über die Modul-Laufzeit stabil (nur istMaster steuert Neustarts).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [istMaster, sync.abonnieren])
 
   const update: Update = fn => {
     const alt = aktuell.current
     if (!alt) return
     const neu = fn(alt)
     aktuell.current = neu
-    setState(neu) // optimistisch — Firestore-Snapshot bestätigt danach
-    diffSchreiben(alt, neu, istMaster).catch(e => setFehler('Speichern fehlgeschlagen: ' + String(e)))
+    setState(neu) // optimistisch — Sync bestätigt/korrigiert danach
+    sync.diffSchreiben(alt, neu, istMaster).catch(e => setFehler('Speichern fehlgeschlagen: ' + String(e)))
   }
 
   if (fehler) {
@@ -140,10 +150,33 @@ function FirebaseApp() {
   if (user === null) return <LoginView />
   if (info === undefined) return <LadeAnzeige text="Prüfe Freischaltung …" />
   if (info === null) return <NichtFreigeschaltet email={user.email ?? '?'} />
-  return <SyncApp info={info} />
+  return <SyncApp info={info} sync={{ abonnieren, diffSchreiben }} />
+}
+
+/** RudelCheck-Backend-Modus: Google-Login per Identity Services, REST+Polling statt Firestore. */
+function ApiApp() {
+  const [status, setStatus] = useState<'lädt' | 'ausgeloggt' | 'nicht-freigeschaltet' | 'bereit'>('lädt')
+  const [info, setInfo] = useState<TrainerInfo | null>(null)
+
+  useEffect(() => {
+    meAbrufen().then(i => {
+      if (i) { setInfo(i); setStatus('bereit') } else setStatus('ausgeloggt')
+    })
+  }, [])
+
+  if (status === 'lädt') return <LadeAnzeige text="Prüfe Anmeldung …" />
+  if (status === 'ausgeloggt') {
+    return <ApiLoginView auf={ergebnis => {
+      if (ergebnis.status === 'ok') { setInfo(ergebnis.info); setStatus('bereit') }
+      else if (ergebnis.status === 'nicht-freigeschaltet') setStatus('nicht-freigeschaltet')
+    }} />
+  }
+  if (status === 'nicht-freigeschaltet') return <ApiNichtFreigeschaltet />
+  return <SyncApp info={info!} sync={{ abonnieren: apiSync.abonnieren, diffSchreiben: apiSync.diffSchreiben }} />
 }
 
 export default function App() {
+  if (apiAktiv) return <ApiApp />
   return firebaseAktiv ? <FirebaseApp /> : <LokalApp />
 }
 
@@ -164,7 +197,10 @@ export function Seite(props: {
         {benutzer.rolle !== 'lokal' && (
           <button
             className="konto"
-            onClick={() => { if (confirm('Abmelden?')) abmelden() }}
+            onClick={() => {
+              if (!confirm('Abmelden?')) return
+              if (apiAktiv) apiAbmelden(); else firebaseAbmelden()
+            }}
             title={`Angemeldet als ${benutzer.email}`}
           >
             {(benutzer.name || benutzer.email || '?').slice(0, 1).toUpperCase()}

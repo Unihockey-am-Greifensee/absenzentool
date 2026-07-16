@@ -15,7 +15,7 @@ export function GruppenListe({ state }: { state: AppState; update: Update }) {
     : state.gruppen
 
   return (
-    <Seite titel="Absenzentool" tab="gruppen">
+    <Seite titel="RudelCheck" tab="gruppen">
       {gruppen.length === 0 && (
         <div className="leer">
           {istMaster ? (
