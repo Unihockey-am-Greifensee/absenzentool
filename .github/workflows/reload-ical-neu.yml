@@ -1,0 +1,17 @@
+name: Einmaliges Neuladen der iCal-Quellen (Migration)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  reload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npx tsx scripts/reload-ical-neu.ts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
