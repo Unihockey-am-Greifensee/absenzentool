@@ -1,6 +1,9 @@
-// Basis-URL des neuen RudelCheck-Node/MySQL-Backends (Ersatz für Firebase, siehe
-// Migrationsplan). Leer = weiterhin Firebase-Modus. Sobald das Backend produktiv auf
-// Novatrend läuft, hier die Produktions-URL eintragen, um den Umstieg für alle zu vollziehen.
+// Schalter für den Umstieg von Firebase auf das RudelCheck-Backend (siehe Migrationsplan).
+// Wird über die Build-Variable VITE_API_AKTIV gesetzt (siehe package.json: "build" = Firebase/
+// GitHub Pages, "build:rudelcheck" = RudelCheck/Novatrend) statt fest im Code, damit nie versehentlich
+// der falsche Modus in den falschen Build gerät. Frontend und Backend laufen auf Novatrend auf
+// derselben Domain, daher bleibt API_BASE_URL_PROD leer (relative Pfade, kein CORS nötig).
+const API_AKTIV_PROD = import.meta.env.VITE_API_AKTIV === 'true'
 const API_BASE_URL_PROD = ''
 
 // Dev-Server: mit ?api=<url> gegen ein lokales/entferntes Backend testen, ohne diese
@@ -8,7 +11,7 @@ const API_BASE_URL_PROD = ''
 const apiUeberschreibung = import.meta.env?.DEV ? new URLSearchParams(location.search).get('api') : null
 
 export const API_BASE_URL = apiUeberschreibung ?? API_BASE_URL_PROD
-export const apiAktiv = API_BASE_URL !== ''
+export const apiAktiv = apiUeberschreibung !== null || API_AKTIV_PROD
 
 // Google-OAuth-Client-ID — dieselbe "Web SDK"-Client-ID, die auch das bisherige
 // Firebase-Projekt für den Google-Login verwendet (siehe src/firebase.ts). Client-IDs

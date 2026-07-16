@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:rudelcheck": "tsc -b && VITE_API_AKTIV=true vite build --base=/",
     "lint": "oxlint",
     "preview": "vite preview"
   },
