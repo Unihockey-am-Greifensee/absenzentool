@@ -102,7 +102,7 @@ h1 {
 }
 .topbar .abmelden {
   background: transparent; border: none; color: var(--ink);
-  width: 2rem; height: 2rem; padding: 0; flex-shrink: 0;
+  width: 2.4rem; height: 2.4rem; padding: 0; flex-shrink: 0;
   font-size: 1.15rem; display: flex; align-items: center; justify-content: center;
 }
 
