@@ -20,11 +20,12 @@ import { BackupView } from './views/Backup'
 import { AdminHub } from './views/Admin'
 import { GruppenVerwaltung } from './views/GruppenVerwaltung'
 import { Halbjahresabschluss } from './views/Halbjahresabschluss'
+import { MeineKinder } from './views/MeineKinder'
 
 export type Update = (fn: (s: AppState) => AppState) => void
 
 export interface Benutzer {
-  rolle: 'master' | 'trainer' | 'lokal'
+  rolle: 'master' | 'trainer' | 'familie' | 'lokal'
   email?: string
   name?: string
   fotoRecht?: boolean // Trainer darf Personen-Fotos hochladen/löschen (Admin darf immer)
@@ -172,6 +173,15 @@ function ApiApp() {
     }} />
   }
   if (status === 'nicht-freigeschaltet') return <ApiNichtFreigeschaltet />
+  // Familie-Konten (Eltern/Spieler:innen, An-/Abmeldefunktion) haben keinen Zugriff auf den
+  // vollen Trainer-AppState — eigene, schlanke Ansicht statt SyncApp/Router.
+  if (info!.rolle === 'familie') {
+    return (
+      <BenutzerContext.Provider value={{ rolle: 'familie', email: info!.email }}>
+        <MeineKinder />
+      </BenutzerContext.Provider>
+    )
+  }
   return <SyncApp info={info!} sync={{ abonnieren: apiSync.abonnieren, diffSchreiben: apiSync.diffSchreiben }} />
 }
 
@@ -208,19 +218,21 @@ export function Seite(props: {
         )}
       </div>
       {props.children}
-      <nav className="bottomnav">
-        <a href="#/" className={props.tab === 'gruppen' ? 'aktiv' : ''}>
-          <span className="icon">🏑</span>Gruppen
-        </a>
-        <a href="#/personen" className={props.tab === 'personen' ? 'aktiv' : ''}>
-          <span className="icon">👥</span>Personen
-        </a>
-        {benutzer.rolle !== 'trainer' && (
-          <a href="#/export" className={props.tab === 'export' ? 'aktiv' : ''}>
-            <span className="icon">⚙️</span>Admin
+      {benutzer.rolle !== 'familie' && (
+        <nav className="bottomnav">
+          <a href="#/" className={props.tab === 'gruppen' ? 'aktiv' : ''}>
+            <span className="icon">🏑</span>Gruppen
           </a>
-        )}
-      </nav>
+          <a href="#/personen" className={props.tab === 'personen' ? 'aktiv' : ''}>
+            <span className="icon">👥</span>Personen
+          </a>
+          {benutzer.rolle !== 'trainer' && (
+            <a href="#/export" className={props.tab === 'export' ? 'aktiv' : ''}>
+              <span className="icon">⚙️</span>Admin
+            </a>
+          )}
+        </nav>
+      )}
     </div>
   )
 }

@@ -69,3 +69,24 @@ export async function abmelden(): Promise<void> {
   await apiFetch('/auth/logout', { method: 'POST' }).catch(() => {})
   window.google?.accounts.id.disableAutoSelect()
 }
+
+// Alternative zum Google-Login für Eltern/Spieler:innen ohne Google-Konto: Code per Mail
+// (An-/Abmeldefunktion). Nutzt dieselbe Session wie der Trainer-Login.
+
+export async function codeAnfordern(email: string): Promise<{ ok: true } | { ok: false; meldung: string }> {
+  const res = await apiFetch('/auth/code-anfordern', { method: 'POST', body: JSON.stringify({ email }) })
+  if (!res.ok) {
+    const daten = await res.json().catch(() => ({}))
+    return { ok: false, meldung: daten.fehler ?? `Fehler (HTTP ${res.status})` }
+  }
+  return { ok: true }
+}
+
+export async function codeBestaetigen(email: string, code: string): Promise<{ ok: true; info: TrainerInfo } | { ok: false; meldung: string }> {
+  const res = await apiFetch('/auth/code-bestaetigen', { method: 'POST', body: JSON.stringify({ email, code }) })
+  if (!res.ok) {
+    const daten = await res.json().catch(() => ({}))
+    return { ok: false, meldung: daten.fehler ?? `Fehler (HTTP ${res.status})` }
+  }
+  return { ok: true, info: await res.json() }
+}

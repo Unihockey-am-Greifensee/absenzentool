@@ -20,9 +20,17 @@ import { aktuelleSaison } from './saison'
 
 export interface TrainerInfo {
   email: string
-  rolle: 'master' | 'trainer'
+  rolle: 'master' | 'trainer' | 'familie'
   name?: string
   fotoRecht?: boolean // Trainer darf Personen-Fotos hochladen/löschen
+}
+
+/** Ein freigeschaltetes Trainer-Konto (trainer-Tabelle) — nie 'familie', im Unterschied zu TrainerInfo. */
+export interface TrainerKonto {
+  email: string
+  rolle: 'master' | 'trainer'
+  name?: string
+  fotoRecht?: boolean
 }
 
 export interface GruppeMeta {

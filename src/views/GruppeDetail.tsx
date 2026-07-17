@@ -35,6 +35,7 @@ export function GruppeDetail({ state, update, gruppeId }: { state: AppState; upd
 
       <KalenderSektion state={state} update={update} gruppeId={gruppe.id} />
       <TrainerZuteilung state={state} update={update} gruppeId={gruppe.id} />
+      <AbmeldeFrist state={state} update={update} gruppeId={gruppe.id} />
 
       <TermineSektionen gruppe={gruppe} />
 
@@ -408,6 +409,42 @@ function TrainerZuteilung({ state, update, gruppeId }: { state: AppState; update
             {' '}Neue Konten schaltest du in der <a href="#/trainer">Trainer-Verwaltung</a> frei.
           </div>
         )}
+      </div>
+    </details>
+  )
+}
+
+/**
+ * Für die An-/Abmeldefunktion (Eltern/Spieler:innen): überschreibt die globalen
+ * Stunden-Fristen (Admin > Fristen) für diese Gruppe mit einer festen Tageszeit — z. B.
+ * "13:00" für Herren/U18, unabhängig von der jeweiligen Trainingszeit.
+ */
+function AbmeldeFrist({ state, update, gruppeId }: { state: AppState; update: Update; gruppeId: string }) {
+  const benutzer = useBenutzer()
+  const gruppe = state.gruppen.find(g => g.id === gruppeId)!
+  const [uhrzeit, setUhrzeit] = useState(gruppe.abmeldeFristUhrzeit ?? '')
+  if (benutzer.rolle !== 'master') return null
+
+  const speichern = (wert: string) =>
+    update(s => {
+      const n = structuredClone(s)
+      n.gruppen.find(g => g.id === gruppeId)!.abmeldeFristUhrzeit = wert || undefined
+      return n
+    })
+
+  return (
+    <details className="aufklapp">
+      <summary>Abmelde-Frist (An-/Abmeldefunktion)</summary>
+      <div className="karte">
+        <div className="sub" style={{ padding: '0.5rem 0 0.6rem' }}>
+          Standardmässig gilt die globale Stunden-Frist (siehe Admin › Fristen). Hier kannst du
+          für diese Gruppe stattdessen eine feste Tageszeit setzen, bis zu der Eltern/Spieler:innen
+          sich für Termine am selben Tag noch abmelden können — unabhängig von der Startzeit.
+        </div>
+        <label className="feld">Feste Frist-Uhrzeit (leer = globale Regel verwenden)
+          <input type="time" value={uhrzeit} onChange={e => setUhrzeit(e.target.value)} />
+        </label>
+        <button className="sekundaer breit" onClick={() => speichern(uhrzeit)}>Speichern</button>
       </div>
     </details>
   )

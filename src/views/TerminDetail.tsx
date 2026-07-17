@@ -74,12 +74,19 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
           if (!p) return null
           const foto = neuestesFoto(state.fotos, m.personId)
           const aktuell = anwesenheitStatus(termin.anwesenheit[m.personId])
+          const familienMeldung = termin.anwesenheitMeta?.[m.personId]
           return (
             <div key={m.personId} className="zeile">
               {foto && <img src={foto.datenUrl} alt="" className="foto-icon" />}
               <div className="haupt">
                 <div className="titel">{p.vorname} {p.nachname}</div>
                 <div className="sub">{m.rolle ?? m.funktion}</div>
+                {familienMeldung && (
+                  <div className="sub" style={{ color: 'var(--accent-ink)', fontWeight: 600 }}
+                    title={familienMeldung.grund ? `Grund: ${familienMeldung.grund}` : undefined}>
+                    👪 von Familie gemeldet{familienMeldung.grund ? ` · ${familienMeldung.grund}` : ''}
+                  </div>
+                )}
               </div>
               <div className="statusreihe">
                 {STATUS_OPTIONEN.map(o => (

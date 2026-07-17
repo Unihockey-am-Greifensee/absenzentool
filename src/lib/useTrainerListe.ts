@@ -3,17 +3,17 @@ import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { alleTrainer } from './apiSync'
 import { apiAktiv } from '../config/apiConfig'
-import type { TrainerInfo } from './firestoreSync'
+import type { TrainerKonto } from './firestoreSync'
 
 const POLL_INTERVALL_MS = 20_000
 
-function sortiert(t: TrainerInfo[]): TrainerInfo[] {
+function sortiert(t: TrainerKonto[]): TrainerKonto[] {
   return [...t].sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email, 'de'))
 }
 
 /** Liste aller freigeschalteten Trainer-Konten — Firestore-Live-Sync oder API-Polling. */
-export function useTrainerListe(): TrainerInfo[] {
-  const [liste, setListe] = useState<TrainerInfo[]>([])
+export function useTrainerListe(): TrainerKonto[] {
+  const [liste, setListe] = useState<TrainerKonto[]>([])
 
   useEffect(() => {
     if (!apiAktiv) return
@@ -27,8 +27,8 @@ export function useTrainerListe(): TrainerInfo[] {
   useEffect(() => {
     if (apiAktiv || !db) return
     return onSnapshot(collection(db, 'trainer'), snap => {
-      const t: TrainerInfo[] = []
-      snap.forEach(d => t.push({ email: d.id, ...(d.data() as Omit<TrainerInfo, 'email'>) }))
+      const t: TrainerKonto[] = []
+      snap.forEach(d => t.push({ email: d.id, ...(d.data() as Omit<TrainerKonto, 'email'>) }))
       setListe(sortiert(t))
     })
   }, [])

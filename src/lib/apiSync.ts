@@ -2,8 +2,8 @@ import type { Aktivitaet, AppState, Foto, Gruppe, Person, TeamFoto } from '../ty
 import { API_BASE_URL } from '../config/apiConfig'
 import { apiFetch } from './apiClient'
 
-export type { TrainerInfo } from './firestoreSync'
-import type { TrainerInfo } from './firestoreSync'
+export type { TrainerInfo, TrainerKonto } from './firestoreSync'
+import type { TrainerKonto } from './firestoreSync'
 
 // REST-Spiegel des AppState — Ersatz für firestoreSync.ts (siehe Migrationsplan).
 // Lesen: initiales Laden + Polling (kein Live-Push wie Firestore-Snapshots).
@@ -249,7 +249,23 @@ export async function trainerLoeschen(email: string): Promise<void> {
   await apiFetch(`/api/trainer/${encodeURIComponent(email.toLowerCase())}`, { method: 'DELETE' }).then(pruefen)
 }
 
-export async function alleTrainer(): Promise<TrainerInfo[]> {
+export async function alleTrainer(): Promise<TrainerKonto[]> {
   const res = await apiFetch('/api/trainer').then(pruefen)
   return res.json()
+}
+
+// --- Globale Fristen für die An-/Abmeldefunktion (Eltern/Spieler:innen) ---
+
+export interface Fristen {
+  fristStundenTraining: number
+  fristStundenWettkampf: number
+}
+
+export async function fristenLaden(): Promise<Fristen> {
+  const res = await apiFetch('/api/einstellungen').then(pruefen)
+  return res.json()
+}
+
+export async function fristenSpeichern(fristen: Fristen): Promise<void> {
+  await apiFetch('/api/einstellungen', { method: 'PUT', body: JSON.stringify(fristen) }).then(pruefen)
 }

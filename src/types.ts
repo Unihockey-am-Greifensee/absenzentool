@@ -54,6 +54,10 @@ export interface Aktivitaet {
   // personId -> Status. Ältere Termine enthalten noch `true` (= anwesend) statt
   // eines Status-Strings — siehe lib/anwesenheit.ts für den robusten Zugriff.
   anwesenheit: Record<string, AnwesenheitStatus | boolean>
+  // personId -> Grund, aber nur für Einträge, die eine Familie selbst gemeldet hat (An-/
+  // Abmeldefunktion) — steuert die Kennzeichnung im Trainer-Termin (TerminDetail.tsx).
+  // Verschwindet serverseitig automatisch, sobald ein Trainer den Status aktiv ändert.
+  anwesenheitMeta?: Record<string, { grund?: string; gemeldetVon: 'familie' }>
   icalUid?: string // gesetzt, wenn der Termin aus einem iCal-Feed stammt
   abgeschlossen?: boolean // Trainer schliesst den Termin selbst ab — sperrt die Anwesenheit,
   // bis er ihn wieder öffnet. Steuert nur die Übersichts-Einteilung, unabhängig von status/NDS-Export.
@@ -94,6 +98,9 @@ export interface Gruppe {
   standardZeit?: string
   standardDauer?: number
   standardOrt?: string
+  // Überschreibt für die An-/Abmeldefunktion die globalen Stunden-Fristen (Einstellung) mit
+  // einer festen Tageszeit (z. B. "13:00") — siehe rudelcheck-server/src/lib/familie.ts.
+  abmeldeFristUhrzeit?: string
 }
 
 export interface AppState {
