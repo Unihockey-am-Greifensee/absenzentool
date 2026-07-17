@@ -184,13 +184,11 @@ label.feld input, label.feld select {
 .foto-icon {
   /* Feste Grösse statt auto/aspect-ratio: Flexbox bemisst die Breite eines
      Bildes VOR der Zeilenhöhe, wodurch die echte Bildgrösse (480×480px)
-     durchschlägt, egal was align-self/aspect-ratio sagen. Die Grösse hier
-     entspricht rechnerisch der Höhe einer zweizeiligen .zeile (Titel + Sub)
-     minus 4px — passt zu allen Stellen, die Titel+Sub konsequent zeigen. */
-  width: calc(4rem - 4px); height: calc(4rem - 4px);
-  /* margin-inline-start zieht zusätzlich das linke .karte-Padding (1rem) ab,
-     damit der Abstand zum Karten-Rand genauso 2px beträgt wie oben/unten. */
-  margin-block: calc(-0.65rem + 2px); margin-inline-start: calc(-1.25rem + 2px);
+     durchschlägt, egal was align-self/aspect-ratio sagen. Die Grösse
+     entspricht der Höhe des zweizeiligen Textblocks (Titel 1rem + Sub 0.8rem,
+     je line-height 1.5 = 2.7rem), damit Zeilen mit Foto nicht höher werden
+     als solche ohne. */
+  width: 2.7rem; height: 2.7rem;
   border-radius: var(--radius-md); border: 1.5px solid var(--line);
   object-fit: cover; flex-shrink: 0;
 }
