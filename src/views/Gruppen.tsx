@@ -1,9 +1,31 @@
-import type { AppState } from '../types'
+import type { AppState, Gruppe } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
 import { heute } from '../lib/datum'
 import { aktiveMitglieder } from '../lib/mitglieder'
 import { useErinnerungen } from '../lib/erinnerungen'
 import { chDatumKurz } from './GruppeDetail'
+
+// Reihenfolge in der Hauptübersicht: erst nach Alter (U9 vor U11 vor … vor Herren zuunterst),
+// dann innerhalb derselben Altersklasse nach Standort — FÄLLANDÄ, dann SCHWERZI, VOLKI/FÖRDER zuletzt.
+const ORT_RANG: Record<string, number> = { 'FÄLLANDÄ': 0, 'SCHWERZI': 1 }
+
+function alterRang(name: string): number {
+  const treffer = name.match(/^U(\d+)/i)
+  return treffer ? Number(treffer[1]) : 999 // Herren & Co. ohne U-Zahl ganz zuunterst
+}
+
+function ortRang(name: string): number {
+  const ort = name.split(' ').slice(1).join(' ').toUpperCase()
+  return ORT_RANG[ort] ?? 2 // VOLKI/FÖRDER/GF/unbekannt ans Ende dieser Altersklasse
+}
+
+function gruppenSortierung(a: Gruppe, b: Gruppe): number {
+  const alterDiff = alterRang(a.name) - alterRang(b.name)
+  if (alterDiff !== 0) return alterDiff
+  const ortDiff = ortRang(a.name) - ortRang(b.name)
+  if (ortDiff !== 0) return ortDiff
+  return a.name.localeCompare(b.name, 'de')
+}
 
 function ErinnerungsBanner() {
   const termine = useErinnerungen()
@@ -29,9 +51,10 @@ export function GruppenListe({ state }: { state: AppState; update: Update }) {
   // Trainer sehen ausschliesslich ihre zugeteilten Gruppen — auch wenn das null sind
   // (vorher wurden bei fehlender Zuteilung fälschlich ALLE Gruppen gezeigt, was beim
   // Erfassen dann an den Firestore-Regeln scheiterte).
-  const gruppen = benutzer.rolle === 'trainer'
+  const gruppen = (benutzer.rolle === 'trainer'
     ? state.gruppen.filter(g => g.trainerEmails?.includes(benutzer.email!.toLowerCase()))
     : state.gruppen
+  ).slice().sort(gruppenSortierung)
 
   return (
     <Seite titel="RudelCheck" tab="gruppen">

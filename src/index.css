@@ -163,6 +163,11 @@ label.feld input, label.feld select {
   border: 1.5px solid var(--line); border-radius: var(--radius-md); padding: 0.55rem 0.7rem;
 }
 .felder2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 0.7rem; }
+/* Auf schmalen Screens sprengen date/time-Inputs (native Picker-Breite) die 2 Spalten —
+   z. B. beim Termin-Anlegen (Datum/Wiederholen-bis, Zeit/Ort). Untereinander statt daneben. */
+@media (max-width: 420px) {
+  .felder2 { grid-template-columns: 1fr; }
+}
 
 .check {
   width: 26px; height: 26px; border-radius: var(--radius-md); border: 2px solid var(--muted);
@@ -195,6 +200,8 @@ label.feld input, label.feld select {
   object-fit: cover; flex-shrink: 0;
 }
 .foto-gross { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-lg); border: 2px solid var(--ink); }
+/* Kein Porträt vorhanden — graues Viereck in derselben Grösse statt Lücke in der Zeile. */
+.foto-icon.platzhalter { background: var(--slate-tint); }
 
 .feld-anzeige { display: block; padding-top: 0.25rem; color: var(--ink); font-weight: 600; min-height: 1.4em; }
 

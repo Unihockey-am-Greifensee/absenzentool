@@ -21,17 +21,16 @@ export function chDatumKurz(iso: string): string {
 }
 
 export function GruppeDetail({ state, update, gruppeId }: { state: AppState; update: Update; gruppeId: string }) {
+  const benutzer = useBenutzer()
   const gruppe = state.gruppen.find(g => g.id === gruppeId)
   const [zeigeNeu, setZeigeNeu] = useState(false)
   if (!gruppe) return <Seite titel="Gruppe nicht gefunden" zurueck="" tab="gruppen"><div className="leer">Diese Gruppe existiert nicht (mehr).</div></Seite>
+  // Nur der Hauptverantwortliche der Gruppe soll Termine anlegen — Admin behält wie überall sonst vollen Zugriff.
+  const darfTermineAnlegen = benutzer.rolle === 'master' || benutzer.email === gruppe.hauptverantwortlicherEmail
 
   return (
     <Seite titel={gruppe.name} zurueck="" tab="gruppen">
       <TeamFotoSektion state={state} update={update} gruppeId={gruppe.id} />
-      <div className="btnreihe">
-        <button className="breit" onClick={() => setZeigeNeu(v => !v)}>{zeigeNeu ? 'Formular schliessen' : '+ Termine hinzufügen'}</button>
-      </div>
-      {zeigeNeu && <NeueTermine gruppe={gruppe.id} state={state} update={update} fertig={() => setZeigeNeu(false)} />}
 
       <KalenderSektion state={state} update={update} gruppeId={gruppe.id} />
       <TrainerZuteilung state={state} update={update} gruppeId={gruppe.id} />
@@ -40,6 +39,15 @@ export function GruppeDetail({ state, update, gruppeId }: { state: AppState; upd
       <TermineSektionen gruppe={gruppe} />
 
       <MitgliederSektionen state={state} update={update} gruppeId={gruppe.id} />
+
+      {darfTermineAnlegen && (
+        <>
+          <div className="btnreihe">
+            <button className="breit" onClick={() => setZeigeNeu(v => !v)}>{zeigeNeu ? 'Formular schliessen' : '+ Termine hinzufügen'}</button>
+          </div>
+          {zeigeNeu && <NeueTermine gruppe={gruppe.id} state={state} update={update} fertig={() => setZeigeNeu(false)} />}
+        </>
+      )}
     </Seite>
   )
 }
@@ -266,7 +274,7 @@ function MitgliederSektionen({ state, update, gruppeId }: { state: AppState; upd
     const foto = neuestesFoto(state.fotos, m.personId)
     return (
       <div key={m.personId} className="zeile">
-        {foto && <img src={foto.datenUrl} alt="" className="foto-icon" />}
+        {foto ? <img src={foto.datenUrl} alt="" className="foto-icon" /> : <div className="foto-icon platzhalter" />}
         <div className="haupt">
           <div className="titel">{p.vorname} {p.nachname}</div>
           <div className="sub">{m.rolle ?? m.funktion}{!p.jsNummer && ' · ⚠ keine J+S-Nr.'}</div>
