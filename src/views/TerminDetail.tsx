@@ -154,13 +154,21 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
           )}
         </div>
       ) : termin.status !== 'abgesagt' && (
-        <div className="btnreihe">
-          {termin.abgeschlossen ? (
-            <button className="sekundaer breit" onClick={() => mutiere(a => { a.abgeschlossen = false })}>Wieder öffnen</button>
-          ) : (
-            <button className="breit" onClick={() => mutiere(a => { a.abgeschlossen = true })}>Abschliessen</button>
+        <>
+          <div className="btnreihe">
+            {termin.abgeschlossen ? (
+              <button className="sekundaer breit" onClick={() => mutiere(a => { a.abgeschlossen = false })}>Wieder öffnen</button>
+            ) : (
+              <button className="breit" disabled={zaehlung.offen > 0}
+                onClick={() => mutiere(a => { a.abgeschlossen = true })}>Abschliessen</button>
+            )}
+          </div>
+          {!termin.abgeschlossen && zaehlung.offen > 0 && (
+            <div className="sub" style={{ marginTop: '-0.6rem' }}>
+              Erst möglich, wenn bei allen {zaehlung.offen === 1 ? 'noch 1 Person eine' : `noch ${zaehlung.offen} Personen eine`} Option ausgewählt wurde.
+            </div>
           )}
-        </div>
+        </>
       )}
 
       {istAdmin && (
