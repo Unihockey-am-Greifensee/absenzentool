@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { AppState } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
-import { VorlagenKnopf } from './IcalSync'
 import { naechsteSaison } from '../lib/saison'
 import { fristenLaden, fristenSpeichern, type Fristen } from '../lib/apiSync'
 import { apiAktiv } from '../config/apiConfig'
@@ -53,7 +52,6 @@ export function AdminHub({ state, update }: { state: AppState; update: Update })
       <div className="btnreihe" style={{ flexDirection: 'column', marginTop: 0 }}>
         <a className="btn sekundaer breit" href="#/gruppen-verwalten">Gruppen verwalten</a>
         <a className="btn sekundaer breit" href="#/import">kOOL-Export importieren</a>
-        <VorlagenKnopf update={update} />
         {benutzer.rolle === 'master' && (
           <a className="btn sekundaer breit" href="#/trainer">Trainer-Verwaltung</a>
         )}

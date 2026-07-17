@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import type { AppState, Aktivitaet, Aktivitaetstyp } from '../types'
-import { neueId } from '../types'
 import { useBenutzer, type Update } from '../App'
 import { fetchUrl, icsMergen, nurZukuenftig, parseIcs, verwaisteTermine, type IcsSyncErgebnis } from '../lib/icsImport'
-import { ICAL_VORLAGEN } from '../config/icalVorlagen'
 import { chDatumKurz } from './GruppeDetail'
 
 function summe(a: IcsSyncErgebnis, b: IcsSyncErgebnis): IcsSyncErgebnis {
@@ -203,46 +201,3 @@ export function KalenderSektion({ state, update, gruppeId }: { state: AppState; 
   )
 }
 
-/** Weist die bekannten Vereins-Kalender den gleichnamigen Gruppen zu; fehlende Gruppen werden angelegt. */
-export function vorlagenZuordnen(state: AppState): { state: AppState; zugeordnet: number; neueGruppen: number } {
-  const neu: AppState = JSON.parse(JSON.stringify(state))
-  let zugeordnet = 0
-  let neueGruppen = 0
-  for (const v of ICAL_VORLAGEN) {
-    let gruppe = neu.gruppen.find(g => g.name === v.gruppe)
-    if (!gruppe) {
-      gruppe = { id: neueId(), name: v.gruppe, mitglieder: [], aktivitaeten: [] }
-      neu.gruppen.push(gruppe)
-      neueGruppen++
-    }
-    const vorhandene = new Set((gruppe.icalQuellen ?? []).map(q => q.url))
-    for (const q of v.quellen) {
-      if (!vorhandene.has(q.url)) {
-        gruppe.icalQuellen = [...(gruppe.icalQuellen ?? []), q]
-        zugeordnet++
-      }
-    }
-  }
-  neu.gruppen.sort((a, b) => a.name.localeCompare(b.name, 'de'))
-  return { state: neu, zugeordnet, neueGruppen }
-}
-
-export function VorlagenKnopf({ update }: { update: Update }) {
-  const [meldung, setMeldung] = useState('')
-  return (
-    <>
-      <button className="sekundaer breit" onClick={() => {
-        let text = ''
-        update(s => {
-          const { state, zugeordnet, neueGruppen } = vorlagenZuordnen(s)
-          text = zugeordnet === 0
-            ? 'Alle bekannten Kalender sind bereits zugeordnet.'
-            : `${zugeordnet} Kalender zugeordnet, ${neueGruppen} Gruppen neu angelegt.`
-          return state
-        })
-        setMeldung(text)
-      }}>Grizzlys-Kalender zuordnen</button>
-      {meldung && <div className="hinweis info breit">{meldung}</div>}
-    </>
-  )
-}
