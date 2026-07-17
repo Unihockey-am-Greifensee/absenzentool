@@ -319,7 +319,20 @@ function TrainerZuteilung({ state, update, gruppeId }: { state: AppState; update
   const setzen = (liste: string[]) =>
     update(s => {
       const n = structuredClone(s)
-      n.gruppen.find(g => g.id === gruppeId)!.trainerEmails = liste
+      const gr = n.gruppen.find(g => g.id === gruppeId)!
+      gr.trainerEmails = liste
+      // Wird der Hauptverantwortliche selbst entfernt, verliert die Gruppe die Erinnerung —
+      // muss dann neu gesetzt werden statt eine ungültige E-Mail stehen zu lassen.
+      if (gr.hauptverantwortlicherEmail && !liste.includes(gr.hauptverantwortlicherEmail)) {
+        gr.hauptverantwortlicherEmail = undefined
+      }
+      return n
+    })
+
+  const hauptverantwortlichenSetzen = (email: string | undefined) =>
+    update(s => {
+      const n = structuredClone(s)
+      n.gruppen.find(g => g.id === gruppeId)!.hauptverantwortlicherEmail = email
       return n
     })
 
@@ -327,10 +340,21 @@ function TrainerZuteilung({ state, update, gruppeId }: { state: AppState; update
     <details className="aufklapp">
       <summary>Trainer-Zuteilung ({emails.length})</summary>
       <div className="karte">
+        {emails.length > 0 && (
+          <div className="sub" style={{ padding: '0.5rem 0 0' }}>
+            Hauptverantwortlich für die Absenzen (erhält die Erinnerung bei fehlenden Einträgen):
+          </div>
+        )}
         {emails.map(e => {
           const t = registriert.get(e)
+          const istHauptverantwortlich = gruppe.hauptverantwortlicherEmail === e
           return (
             <div key={e} className="zeile">
+              <button type="button" className="leise" title="Als hauptverantwortlich markieren"
+                style={{ fontSize: '1.1rem', padding: '0.2rem 0.5rem', flexShrink: 0 }}
+                onClick={() => hauptverantwortlichenSetzen(istHauptverantwortlich ? undefined : e)}>
+                {istHauptverantwortlich ? '★' : '☆'}
+              </button>
               <div className="haupt">
                 <div className="titel" style={{ fontSize: '0.85rem' }}>{t?.name || e}</div>
                 {t?.name && <div className="sub">{e}</div>}

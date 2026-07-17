@@ -2,6 +2,25 @@ import type { AppState } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
 import { heute } from '../lib/datum'
 import { aktiveMitglieder } from '../lib/mitglieder'
+import { useErinnerungen } from '../lib/erinnerungen'
+import { chDatumKurz } from './GruppeDetail'
+
+function ErinnerungsBanner() {
+  const termine = useErinnerungen()
+  if (termine.length === 0) return null
+  return (
+    <div className="hinweis warnung">
+      <b>{termine.length === 1 ? 'Ein Termin' : `${termine.length} Termine`}</b> {termine.length === 1 ? 'wartet' : 'warten'} seit über 36h auf vollständige Absenzen — du bist dafür hauptverantwortlich:
+      <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.2rem' }}>
+        {termine.map(t => (
+          <li key={t.id}>
+            <a href={`#/gruppe/${t.gruppeId}/termin/${t.id}`}>{t.gruppeName}, {chDatumKurz(t.datum)} ({t.typ})</a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
 
 export function GruppenListe({ state }: { state: AppState; update: Update }) {
   const benutzer = useBenutzer()
@@ -16,6 +35,7 @@ export function GruppenListe({ state }: { state: AppState; update: Update }) {
 
   return (
     <Seite titel="RudelCheck" tab="gruppen">
+      <ErinnerungsBanner />
       {gruppen.length === 0 && (
         <div className="leer">
           {istMaster ? (
