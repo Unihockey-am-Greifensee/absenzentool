@@ -239,7 +239,7 @@ export function Seite(props: {
                 if (apiAktiv) { await apiAbmelden(); window.location.reload() } else await firebaseAbmelden()
               }}
             >
-              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M12 4v6" />
                 <path d="M6.5 6.5a7 7 0 1 0 11 0" />
               </svg>
