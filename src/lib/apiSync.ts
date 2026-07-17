@@ -35,12 +35,13 @@ async function pruefen(res: Response): Promise<Response> {
 }
 
 async function ladeState(): Promise<AppState> {
-  const [personenRes, gruppenRes, aktRes, fotosRes, teamFotosRes] = await Promise.all([
+  const [personenRes, gruppenRes, aktRes, fotosRes, teamFotosRes, fotoSaisonRes] = await Promise.all([
     apiFetch('/api/personen').then(pruefen),
     apiFetch('/api/gruppen').then(pruefen),
     apiFetch('/api/aktivitaeten').then(pruefen),
     apiFetch('/api/fotos').then(pruefen),
     apiFetch('/api/team-fotos').then(pruefen),
+    apiFetch('/api/foto-saison').then(pruefen),
   ])
 
   const personen: Person[] = await personenRes.json()
@@ -48,6 +49,7 @@ async function ladeState(): Promise<AppState> {
   const aktivitaeten: ApiAktivitaet[] = await aktRes.json()
   const fotosRoh: ApiFotoMeta[] = await fotosRes.json()
   const teamFotosRoh: ApiTeamFotoMeta[] = await teamFotosRes.json()
+  const { saison: fotoSaison }: { saison: string } = await fotoSaisonRes.json()
 
   const aktProGruppe = new Map<string, Aktivitaet[]>()
   for (const { gruppeId, ...rest } of aktivitaeten) {
@@ -77,7 +79,7 @@ async function ladeState(): Promise<AppState> {
     datenUrl: `${API_BASE_URL}/api/team-fotos/${f.id}/datei`,
   }))
 
-  return { personen, gruppen, fotos, teamFotos }
+  return { personen, gruppen, fotos, teamFotos, fotoSaison }
 }
 
 export function abonnieren(
@@ -231,6 +233,11 @@ export async function diffSchreiben(alt: AppState, neu: AppState, _istMaster: bo
   }
   for (const id of altTF.keys()) {
     if (!neuTF.has(id)) await apiFetch(`/api/team-fotos/${id}`, { method: 'DELETE' }).then(pruefen)
+  }
+
+  // --- Foto-Saison (manuell gesteuert, Admin-Button "Zur nächsten Saison") ---
+  if (alt.fotoSaison !== neu.fotoSaison) {
+    await apiFetch('/api/foto-saison', { method: 'PUT', body: JSON.stringify({ saison: neu.fotoSaison }) }).then(pruefen)
   }
 }
 

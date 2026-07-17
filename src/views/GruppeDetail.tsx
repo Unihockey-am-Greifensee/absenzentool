@@ -9,7 +9,7 @@ import { useTrainerListe } from '../lib/useTrainerListe'
 import { aktiveMitglieder, hatAnwesenheit, statusVon } from '../lib/mitglieder'
 import { terminGruppen, type TerminGruppe } from '../lib/termine'
 import { istAnwesend } from '../lib/anwesenheit'
-import { aktuelleSaison, neuestesFoto, neuestesTeamfoto } from '../lib/saison'
+import { neuestesFoto, neuestesTeamfoto } from '../lib/saison'
 import { komprimiertesTeamfoto } from '../lib/foto'
 
 const WOCHENTAGE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
@@ -47,7 +47,7 @@ function TeamFotoSektion({ state, update, gruppeId }: { state: AppState; update:
   const benutzer = useBenutzer()
   const darfBearbeiten = benutzer.rolle !== 'trainer' || !!benutzer.fotoRecht
   const [lädt, setLädt] = useState(false)
-  const saison = aktuelleSaison()
+  const saison = state.fotoSaison
   const foto = neuestesTeamfoto(state.teamFotos, gruppeId)
 
   const hochladen = async (datei: File) => {
@@ -80,6 +80,12 @@ function TeamFotoSektion({ state, update, gruppeId }: { state: AppState; update:
     return () => document.removeEventListener('paste', beiPaste)
   }, [darfBearbeiten])
 
+  // Frühere Saisons bleiben erhalten, verschwinden aber aus der Hauptansicht, sobald ein
+  // neues Foto für die aktuelle Saison hochgeladen wurde — hier als Archiv einsehbar.
+  const frühere = state.teamFotos
+    .filter(f => f.gruppeId === gruppeId && f.id !== foto?.id)
+    .sort((a, b) => b.saison.localeCompare(a.saison))
+
   if (!foto && !darfBearbeiten) return null
 
   return (
@@ -100,6 +106,20 @@ function TeamFotoSektion({ state, update, gruppeId }: { state: AppState; update:
           <div className="sub" style={{ marginTop: '-0.4rem' }}>… oder ein kopiertes Bild mit Cmd/Strg+V einfügen.</div>
           {lädt && <div className="sub">Wird verarbeitet …</div>}
         </>
+      )}
+      {frühere.length > 0 && (
+        <details className="aufklapp" style={{ marginTop: '0.5rem' }}>
+          <summary>Frühere Teamfotos ({frühere.length})</summary>
+          {frühere.map(f => (
+            <div key={f.id} style={{ marginTop: '0.5rem' }}>
+              <div className="sub" style={{ marginBottom: '0.3rem' }}>Saison {f.saison}</div>
+              <img src={f.datenUrl} alt="" style={{
+                width: '100%', aspectRatio: '16 / 9', objectFit: 'cover',
+                borderRadius: 'var(--radius-lg)', border: '1.5px solid var(--line)', display: 'block',
+              }} />
+            </div>
+          ))}
+        </details>
       )}
     </div>
   )

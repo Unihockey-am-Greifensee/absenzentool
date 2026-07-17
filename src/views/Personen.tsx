@@ -4,7 +4,7 @@ import { neueId } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
 import { statusVon } from '../lib/mitglieder'
 import { istAnwesend } from '../lib/anwesenheit'
-import { aktuelleSaison, fotosVonPerson } from '../lib/saison'
+import { fotosVonPerson } from '../lib/saison'
 import { komprimiertesFoto } from '../lib/foto'
 
 export function PersonenListe({ state }: { state: AppState }) {
@@ -300,7 +300,7 @@ function PersonFotos({ state, update, person }: { state: AppState; update: Updat
   const darfBearbeiten = benutzer.rolle !== 'trainer' || !!benutzer.fotoRecht
   const [lädt, setLädt] = useState(false)
   const fotos = fotosVonPerson(state.fotos, person.id)
-  const saison = aktuelleSaison()
+  const saison = state.fotoSaison
 
   const hochladen = async (datei: File) => {
     setLädt(true)

@@ -101,9 +101,12 @@ export interface AppState {
   gruppen: Gruppe[]
   fotos: Foto[]
   teamFotos: TeamFoto[]
+  fotoSaison: string // z.B. "2025/26" — manuell gesteuert (Admin: "Zur nächsten Saison"),
+  // Neuuploads erhalten diese Beschriftung. Im Firebase-Modus (kein Backend dafür) automatisch berechnet.
 }
 
-export const LEER: AppState = { personen: [], gruppen: [], fotos: [], teamFotos: [] }
+// fotoSaison hier nur ein Platzhalter — wird sofort durch echte Daten (API/localStorage) ersetzt.
+export const LEER: AppState = { personen: [], gruppen: [], fotos: [], teamFotos: [], fotoSaison: '2025/26' }
 
 export function neueId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)

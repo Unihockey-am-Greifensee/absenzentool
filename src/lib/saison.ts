@@ -11,6 +11,13 @@ export function aktuelleSaison(): string {
   return saisonVon(new Date())
 }
 
+/** "2025/26" -> "2026/27" — für den manuellen Saisonwechsel (Admin-Button), statt starr aus
+ * dem Kalenderdatum abzuleiten, damit der Verein den Zeitpunkt selbst bestimmen kann. */
+export function naechsteSaison(saison: string): string {
+  const start = Number(saison.split('/')[0]) + 1
+  return `${start}/${String((start + 1) % 100).padStart(2, '0')}`
+}
+
 /** Neuestes Foto einer Person — nach Saison, dann Hochladedatum. */
 export function neuestesFoto(fotos: Foto[], personId: string): Foto | undefined {
   return fotos

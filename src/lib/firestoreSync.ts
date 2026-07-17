@@ -4,6 +4,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import type { Aktivitaet, AppState, Foto, Gruppe, Person } from '../types'
+import { aktuelleSaison } from './saison'
 
 // Firestore-Spiegel des AppState.
 //
@@ -76,6 +77,9 @@ export function abonnieren(
         .sort((a, b) => a.name.localeCompare(b.name, 'de')),
       fotos: [...fotos.values()],
       teamFotos: [], // Teamfotos gibt es nur im RudelCheck-Backend, nicht im Firebase-Modus.
+      // Die manuell steuerbare Foto-Saison gibt es nur im RudelCheck-Backend — im Firebase-Modus
+      // bleibt es bei der automatischen Berechnung aus dem Kalenderdatum.
+      fotoSaison: aktuelleSaison(),
     }
     aufState(staat)
   }

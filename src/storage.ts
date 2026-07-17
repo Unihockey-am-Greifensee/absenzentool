@@ -1,5 +1,6 @@
 import type { AppState } from './types'
 import { LEER } from './types'
+import { aktuelleSaison } from './lib/saison'
 
 // Lokale Persistenz. Wird später durch einen Firestore-Adapter ersetzt —
 // die Views kennen nur load/save.
@@ -14,6 +15,7 @@ export function loadState(): AppState {
     if (!Array.isArray(parsed.personen) || !Array.isArray(parsed.gruppen)) return LEER
     if (!Array.isArray(parsed.fotos)) parsed.fotos = []
     if (!Array.isArray(parsed.teamFotos)) parsed.teamFotos = []
+    if (typeof parsed.fotoSaison !== 'string') parsed.fotoSaison = aktuelleSaison()
     return parsed
   } catch {
     return LEER
