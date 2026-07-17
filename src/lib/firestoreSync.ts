@@ -75,6 +75,7 @@ export function abonnieren(
         }))
         .sort((a, b) => a.name.localeCompare(b.name, 'de')),
       fotos: [...fotos.values()],
+      teamFotos: [], // Teamfotos gibt es nur im RudelCheck-Backend, nicht im Firebase-Modus.
     }
     aufState(staat)
   }

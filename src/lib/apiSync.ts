@@ -1,4 +1,4 @@
-import type { Aktivitaet, AppState, Foto, Gruppe, Person } from '../types'
+import type { Aktivitaet, AppState, Foto, Gruppe, Person, TeamFoto } from '../types'
 import { API_BASE_URL } from '../config/apiConfig'
 import { apiFetch } from './apiClient'
 
@@ -22,23 +22,32 @@ interface ApiFotoMeta {
   hochgeladenAm: string
 }
 
+interface ApiTeamFotoMeta {
+  id: string
+  gruppeId: string
+  saison: string
+  hochgeladenAm: string
+}
+
 async function pruefen(res: Response): Promise<Response> {
   if (!res.ok) throw new Error(`${res.url} → HTTP ${res.status}`)
   return res
 }
 
 async function ladeState(): Promise<AppState> {
-  const [personenRes, gruppenRes, aktRes, fotosRes] = await Promise.all([
+  const [personenRes, gruppenRes, aktRes, fotosRes, teamFotosRes] = await Promise.all([
     apiFetch('/api/personen').then(pruefen),
     apiFetch('/api/gruppen').then(pruefen),
     apiFetch('/api/aktivitaeten').then(pruefen),
     apiFetch('/api/fotos').then(pruefen),
+    apiFetch('/api/team-fotos').then(pruefen),
   ])
 
   const personen: Person[] = await personenRes.json()
   const gruppenRoh: Omit<Gruppe, 'aktivitaeten'>[] = await gruppenRes.json()
   const aktivitaeten: ApiAktivitaet[] = await aktRes.json()
   const fotosRoh: ApiFotoMeta[] = await fotosRes.json()
+  const teamFotosRoh: ApiTeamFotoMeta[] = await teamFotosRes.json()
 
   const aktProGruppe = new Map<string, Aktivitaet[]>()
   for (const { gruppeId, ...rest } of aktivitaeten) {
@@ -60,7 +69,15 @@ async function ladeState(): Promise<AppState> {
     datenUrl: `${API_BASE_URL}/api/fotos/${f.id}/datei`,
   }))
 
-  return { personen, gruppen, fotos }
+  const teamFotos: TeamFoto[] = teamFotosRoh.map(f => ({
+    id: f.id,
+    gruppeId: f.gruppeId,
+    saison: f.saison,
+    hochgeladenAm: f.hochgeladenAm,
+    datenUrl: `${API_BASE_URL}/api/team-fotos/${f.id}/datei`,
+  }))
+
+  return { personen, gruppen, fotos, teamFotos }
 }
 
 export function abonnieren(
@@ -91,8 +108,8 @@ function dataUrlZuBlob(datenUrl: string): Blob {
   return new Blob([arr], { type: mime })
 }
 
-function ohneAktivitaeten(g: Gruppe): Omit<Gruppe, 'aktivitaeten' | 'mitglieder' | 'icalQuellen' | 'trainerEmails'> {
-  const { aktivitaeten: _a, mitglieder: _m, icalQuellen: _i, trainerEmails: _t, ...rest } = g
+function ohneAktivitaeten(g: Gruppe): Omit<Gruppe, 'aktivitaeten' | 'mitglieder' | 'icalQuellen' | 'trainerEmails' | 'hauptverantwortlicherEmail'> {
+  const { aktivitaeten: _a, mitglieder: _m, icalQuellen: _i, trainerEmails: _t, hauptverantwortlicherEmail: _h, ...rest } = g
   return rest
 }
 
@@ -156,6 +173,13 @@ export async function diffSchreiben(alt: AppState, neu: AppState, _istMaster: bo
       if (!neuT.has(email)) await apiFetch(`/api/gruppen/${id}/trainer`, { method: 'DELETE', body: JSON.stringify({ email }) }).then(pruefen)
     }
 
+    // Hauptverantwortlicher
+    if ((vorher?.hauptverantwortlicherEmail ?? null) !== (g.hauptverantwortlicherEmail ?? null)) {
+      await apiFetch(`/api/gruppen/${id}/hauptverantwortlicher`, {
+        method: 'PUT', body: JSON.stringify({ email: g.hauptverantwortlicherEmail ?? null }),
+      }).then(pruefen)
+    }
+
     // Aktivitäten + Anwesenheit
     const altA = new Map((vorher?.aktivitaeten ?? []).map(a => [a.id, a]))
     for (const a of g.aktivitaeten) {
@@ -189,6 +213,24 @@ export async function diffSchreiben(alt: AppState, neu: AppState, _istMaster: bo
   }
   for (const id of altF.keys()) {
     if (!neuF.has(id)) await apiFetch(`/api/fotos/${id}`, { method: 'DELETE' }).then(pruefen)
+  }
+
+  // --- Teamfotos (analog zu Fotos, aber gruppenbezogen) ---
+  const altTF = new Map(alt.teamFotos.map(f => [f.id, f]))
+  const neuTF = new Map(neu.teamFotos.map(f => [f.id, f]))
+  for (const [id, f] of neuTF) {
+    const vorher = altTF.get(id)
+    if (vorher && JSON.stringify(vorher) === JSON.stringify(f)) continue
+    if (f.datenUrl.startsWith('data:')) {
+      const form = new FormData()
+      form.append('foto', dataUrlZuBlob(f.datenUrl), id + '.jpg')
+      form.append('gruppeId', f.gruppeId)
+      form.append('saison', f.saison)
+      await apiFetch('/api/team-fotos', { method: 'POST', body: form }).then(pruefen)
+    }
+  }
+  for (const id of altTF.keys()) {
+    if (!neuTF.has(id)) await apiFetch(`/api/team-fotos/${id}`, { method: 'DELETE' }).then(pruefen)
   }
 }
 

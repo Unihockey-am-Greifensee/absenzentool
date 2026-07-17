@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { AppState, Aktivitaet, Aktivitaetstyp, Funktion, Gruppe, Mitglied, MitgliedStatus, Person } from '../types'
 import { neueId } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
@@ -9,7 +9,8 @@ import { useTrainerListe } from '../lib/useTrainerListe'
 import { aktiveMitglieder, hatAnwesenheit, statusVon } from '../lib/mitglieder'
 import { terminGruppen, type TerminGruppe } from '../lib/termine'
 import { istAnwesend } from '../lib/anwesenheit'
-import { neuestesFoto } from '../lib/saison'
+import { aktuelleSaison, neuestesFoto, neuestesTeamfoto } from '../lib/saison'
+import { komprimiertesTeamfoto } from '../lib/foto'
 
 const WOCHENTAGE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 
@@ -26,6 +27,7 @@ export function GruppeDetail({ state, update, gruppeId }: { state: AppState; upd
 
   return (
     <Seite titel={gruppe.name} zurueck="" tab="gruppen">
+      <TeamFotoSektion state={state} update={update} gruppeId={gruppe.id} />
       <div className="btnreihe">
         <button className="breit" onClick={() => setZeigeNeu(v => !v)}>{zeigeNeu ? 'Formular schliessen' : '+ Termine hinzufügen'}</button>
       </div>
@@ -38,6 +40,68 @@ export function GruppeDetail({ state, update, gruppeId }: { state: AppState; upd
 
       <MitgliederSektionen state={state} update={update} gruppeId={gruppe.id} />
     </Seite>
+  )
+}
+
+function TeamFotoSektion({ state, update, gruppeId }: { state: AppState; update: Update; gruppeId: string }) {
+  const benutzer = useBenutzer()
+  const darfBearbeiten = benutzer.rolle !== 'trainer' || !!benutzer.fotoRecht
+  const [lädt, setLädt] = useState(false)
+  const saison = aktuelleSaison()
+  const foto = neuestesTeamfoto(state.teamFotos, gruppeId)
+
+  const hochladen = async (datei: File) => {
+    setLädt(true)
+    try {
+      const datenUrl = await komprimiertesTeamfoto(datei)
+      update(s => {
+        const n = structuredClone(s)
+        n.teamFotos = n.teamFotos.filter(f => !(f.gruppeId === gruppeId && f.saison === saison))
+        n.teamFotos.push({ id: neueId(), gruppeId, saison, datenUrl, hochgeladenAm: new Date().toISOString() })
+        return n
+      })
+    } catch {
+      alert('Foto konnte nicht verarbeitet werden.')
+    } finally {
+      setLädt(false)
+    }
+  }
+
+  // Bild aus der Zwischenablage per Cmd/Strg+V übernehmen (plattformunabhängig).
+  const hochladenRef = useRef(hochladen)
+  hochladenRef.current = hochladen
+  useEffect(() => {
+    if (!darfBearbeiten) return
+    const beiPaste = (e: ClipboardEvent) => {
+      const datei = [...(e.clipboardData?.items ?? [])].find(i => i.type.startsWith('image/'))?.getAsFile()
+      if (datei) { e.preventDefault(); void hochladenRef.current(datei) }
+    }
+    document.addEventListener('paste', beiPaste)
+    return () => document.removeEventListener('paste', beiPaste)
+  }, [darfBearbeiten])
+
+  if (!foto && !darfBearbeiten) return null
+
+  return (
+    <div style={{ marginBottom: '1rem' }}>
+      {foto && (
+        <img src={foto.datenUrl} alt="" style={{
+          width: '100%', aspectRatio: '16 / 9', objectFit: 'cover',
+          borderRadius: 'var(--radius-lg)', border: '2px solid var(--ink)', display: 'block',
+        }} />
+      )}
+      {darfBearbeiten && (
+        <>
+          <label className="feld" style={{ marginTop: foto ? '0.5rem' : 0 }}>
+            {foto ? `Teamfoto für Saison ${saison} ersetzen` : `Teamfoto für Saison ${saison} hochladen (16:9)`}
+            <input type="file" accept="image/*" disabled={lädt}
+              onChange={e => { const f = e.target.files?.[0]; if (f) void hochladen(f); e.target.value = '' }} />
+          </label>
+          <div className="sub" style={{ marginTop: '-0.4rem' }}>… oder ein kopiertes Bild mit Cmd/Strg+V einfügen.</div>
+          {lädt && <div className="sub">Wird verarbeitet …</div>}
+        </>
+      )}
+    </div>
   )
 }
 

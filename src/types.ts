@@ -74,6 +74,14 @@ export interface IcalQuelle {
   typ: Aktivitaetstyp // Standard-Typ, falls der Titel nichts anderes verrät
 }
 
+export interface TeamFoto {
+  id: string
+  gruppeId: string
+  saison: string // z. B. "2025/26" — Saison Mai bis April, siehe lib/saison.ts
+  datenUrl: string // Base64 data: URL (Upload) oder API-URL (nach dem Laden)
+  hochgeladenAm: string // ISO-Zeitstempel
+}
+
 export interface Gruppe {
   id: string
   name: string
@@ -81,6 +89,7 @@ export interface Gruppe {
   aktivitaeten: Aktivitaet[]
   icalQuellen?: IcalQuelle[]
   trainerEmails?: string[] // Google-Konten mit Schreibrecht auf diese Gruppe
+  hauptverantwortlicherEmail?: string // erhält die 36h-Erinnerung bei fehlenden Absenzen
   kOOLNamen?: string[] // Team-Namen aus dem kOOL-Import, die dieser Gruppe zugeordnet wurden (Aliase)
   standardZeit?: string
   standardDauer?: number
@@ -91,9 +100,10 @@ export interface AppState {
   personen: Person[]
   gruppen: Gruppe[]
   fotos: Foto[]
+  teamFotos: TeamFoto[]
 }
 
-export const LEER: AppState = { personen: [], gruppen: [], fotos: [] }
+export const LEER: AppState = { personen: [], gruppen: [], fotos: [], teamFotos: [] }
 
 export function neueId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)

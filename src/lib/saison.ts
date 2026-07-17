@@ -1,4 +1,4 @@
-import type { Foto } from '../types'
+import type { Foto, TeamFoto } from '../types'
 
 // Saison Mai–April: Monate 0-3 (Jan–Apr) gehören noch zur Saison des Vorjahres.
 export function saisonVon(datum: Date | string): string {
@@ -22,4 +22,11 @@ export function fotosVonPerson(fotos: Foto[], personId: string): Foto[] {
   return fotos
     .filter(f => f.personId === personId)
     .sort((a, b) => b.saison.localeCompare(a.saison) || b.hochgeladenAm.localeCompare(a.hochgeladenAm))
+}
+
+/** Neuestes Teamfoto einer Gruppe — nach Saison, dann Hochladedatum. */
+export function neuestesTeamfoto(teamFotos: TeamFoto[], gruppeId: string): TeamFoto | undefined {
+  return teamFotos
+    .filter(f => f.gruppeId === gruppeId)
+    .sort((a, b) => b.saison.localeCompare(a.saison) || b.hochgeladenAm.localeCompare(a.hochgeladenAm))[0]
 }
