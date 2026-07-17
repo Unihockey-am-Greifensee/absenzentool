@@ -344,7 +344,7 @@ function MitgliederSektionen({ state, update, gruppeId }: { state: AppState; upd
 
       <h2 className="abschnitt">Team ({team.length})</h2>
       <div className="karte" style={{ padding: '0.2rem 1rem' }}>
-        {team.length === 0 && <div className="sub" style={{ padding: '0.5rem 0' }}>Noch keine Spieler/innen erfasst.</div>}
+        {team.length === 0 && <div className="sub" style={{ padding: '0.5rem 0' }}>Noch keine Spieler/-innen erfasst.</div>}
         {team.map(m => zeile(m))}
       </div>
 
@@ -559,7 +559,7 @@ function MitgliederVerwaltung({ state, update, gruppeId }: { state: AppState; up
 
   return (
     <details className="aufklapp">
-      <summary>+ Mitglied hinzufügen</summary>
+      <summary>+ Schnuppernde/-r hinzufügen</summary>
       <div className="karte">
         <input className="suchfeld" placeholder="Name suchen …" value={suche} onChange={e => setSuche(e.target.value)} />
         {kandidaten.map(p => (

@@ -147,7 +147,7 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
       )}
 
       {gruppenBox('Coach', coach, 'Kein Coach in dieser Gruppe.')}
-      {gruppenBox('Team', team, 'Keine Spieler/innen in dieser Gruppe.')}
+      {gruppenBox('Team', team, 'Keine Spieler/-innen in dieser Gruppe.')}
       {gruppenBox('Schnuppernde', schnuppernde, 'Niemand am Schnuppern.')}
       {archivierteTeilnehmer.length > 0 && gruppenBox('Archivierte Teilnehmer/innen', archivierteTeilnehmer, '')}
 
