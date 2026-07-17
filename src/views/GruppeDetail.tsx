@@ -11,6 +11,8 @@ import { terminGruppen, type TerminGruppe } from '../lib/termine'
 import { istAnwesend } from '../lib/anwesenheit'
 import { neuestesFoto, neuestesTeamfoto } from '../lib/saison'
 import { komprimiertesTeamfoto } from '../lib/foto'
+import { kurseLaden } from '../lib/apiSync'
+import { stufeBerechnen } from '../lib/kurse'
 
 const WOCHENTAGE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 
@@ -294,6 +296,16 @@ function MitgliederSektionen({ state, update, gruppeId }: { state: AppState; upd
       return n
     })
 
+  // Nachträglich zwischen Coach und Team wechseln — bisher liess sich die Funktion nur beim
+  // Hinzufügen wählen (MitgliederVerwaltung), nicht mehr danach.
+  const funktionWechseln = (personId: string, ziel: Funktion) =>
+    update(s => {
+      const n = structuredClone(s)
+      const g = n.gruppen.find(g => g.id === gruppeId)!
+      g.mitglieder.find(m => m.personId === personId)!.funktion = ziel
+      return n
+    })
+
   const endgueltigLoeschen = (personId: string) => {
     const name = nameVon(personById, personId)
     const frage = hatAnwesenheit(gruppe, personId)
@@ -313,17 +325,12 @@ function MitgliederSektionen({ state, update, gruppeId }: { state: AppState; upd
     if (!p) return null
     const foto = neuestesFoto(state.fotos, m.personId)
     return (
-      <div key={m.personId} className="zeile">
-        {foto ? <img src={foto.datenUrl} alt="" className="foto-icon" /> : <div className="foto-icon platzhalter" />}
-        <div className="haupt">
-          <div className="titel">{p.vorname} {p.nachname}</div>
-          <div className="sub">{m.rolle ?? m.funktion}{!p.jsNummer && ' · ⚠ keine J+S-Nr.'}</div>
-        </div>
-        {pillText && <span className="pill leiter">{pillText}</span>}
-        <button className="leise" onClick={() => {
+      <MitgliedZeile key={m.personId} person={p} mitglied={m} foto={foto?.datenUrl} pillText={pillText}
+        onArchivieren={() => {
           if (confirm(`${p.vorname} ${p.nachname} ins Archiv verschieben? Anwesenheiten bleiben für den NDS-Export erhalten.`)) archivieren(m.personId)
-        }}>Archivieren</button>
-      </div>
+        }}
+        onFunktionWechseln={ziel => funktionWechseln(m.personId, ziel)}
+      />
     )
   }
 
@@ -372,6 +379,43 @@ function MitgliederSektionen({ state, update, gruppeId }: { state: AppState; upd
         </div>
       )}
     </>
+  )
+}
+
+/**
+ * Ausserhalb von MitgliederSektionen definiert — braucht eigene Hooks (Kurs-Stufe pro Coach
+ * nachladen), und ein inline definierter Komponenten-Typ würde bei jedem Render neu gemountet
+ * (siehe gleiches Problem bei der F-Komponente in Personen.tsx).
+ */
+function MitgliedZeile({ person, mitglied, foto, pillText, onArchivieren, onFunktionWechseln }: {
+  person: Person; mitglied: Mitglied; foto?: string; pillText?: string
+  onArchivieren: () => void; onFunktionWechseln: (ziel: Funktion) => void
+}) {
+  const istCoach = mitglied.funktion === 'Leiter/in'
+  const [stufe, setStufe] = useState<string | null | undefined>(undefined) // undefined = lädt noch
+
+  useEffect(() => {
+    if (!istCoach) return
+    kurseLaden(person.id).then(eintraege => setStufe(stufeBerechnen(eintraege)))
+  }, [istCoach, person.id])
+
+  const unterzeile = istCoach
+    ? (stufe === undefined ? 'Lädt Stufe …' : (stufe ?? 'Leiter/in — noch keine Stufe erreicht'))
+    : (mitglied.rolle ?? mitglied.funktion)
+
+  return (
+    <div className="zeile">
+      {foto ? <img src={foto} alt="" className="foto-icon" /> : <div className="foto-icon platzhalter" />}
+      <div className="haupt">
+        <div className="titel">{person.vorname} {person.nachname}</div>
+        <div className="sub">{unterzeile}{!person.jsNummer && ' · ⚠ keine J+S-Nr.'}</div>
+      </div>
+      {pillText && <span className="pill leiter">{pillText}</span>}
+      <button className="leise" onClick={() => onFunktionWechseln(istCoach ? 'Teilnehmer/in' : 'Leiter/in')}>
+        {istCoach ? '→ Team' : '→ Coach'}
+      </button>
+      <button className="leise" onClick={onArchivieren}>Archivieren</button>
+    </div>
   )
 }
 
