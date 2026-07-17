@@ -20,7 +20,7 @@ import { BackupView } from './views/Backup'
 import { AdminHub } from './views/Admin'
 import { GruppenVerwaltung } from './views/GruppenVerwaltung'
 import { Halbjahresabschluss } from './views/Halbjahresabschluss'
-import { MeineKinder } from './views/MeineKinder'
+import { MeineKinder, MeineKinderTermine } from './views/MeineKinder'
 import { FamilieZugriffe } from './views/FamilieZugriffe'
 
 export type Update = (fn: (s: AppState) => AppState) => void
@@ -35,7 +35,7 @@ export interface Benutzer {
 export const BenutzerContext = createContext<Benutzer>({ rolle: 'lokal' })
 export const useBenutzer = () => useContext(BenutzerContext)
 
-function useHashRoute(): string[] {
+export function useHashRoute(): string[] {
   const [hash, setHash] = useState(window.location.hash)
   useEffect(() => {
     const h = () => {
@@ -46,6 +46,17 @@ function useHashRoute(): string[] {
     return () => window.removeEventListener('hashchange', h)
   }, [])
   return hash.replace(/^#\/?/, '').split('/').filter(Boolean)
+}
+
+/**
+ * Eigene, kleine Weiche für die Familie-Routen — wird sowohl vom normalen Router (Trainer/Master
+ * navigieren zum Absenzentool-Tab) als auch direkt für reine Familie-Konten verwendet (die sonst
+ * keinen Zugriff auf SyncApp/Router haben, siehe ApiApp).
+ */
+function FamilieRouter() {
+  const seg = useHashRoute()
+  if (seg[0] === 'meine-kinder' && seg[1] === 'termine' && seg[2]) return <MeineKinderTermine personId={seg[2]} />
+  return <MeineKinder />
 }
 
 function Router({ state, update }: { state: AppState; update: Update }) {
@@ -59,7 +70,7 @@ function Router({ state, update }: { state: AppState; update: Update }) {
   if (seg[0] === 'gruppe' && seg[1] && seg[2] === 'kommend') return <TermineListe state={state} gruppeId={seg[1]} modus="kommend" />
   if (seg[0] === 'gruppe' && seg[1] && seg[2] === 'archiv') return <TermineListe state={state} gruppeId={seg[1]} modus="archiviert" />
   if (seg[0] === 'gruppe' && seg[1]) return <GruppeDetail state={state} update={update} gruppeId={seg[1]} />
-  if (seg[0] === 'meine-kinder') return <MeineKinder />
+  if (seg[0] === 'meine-kinder') return <FamilieRouter />
   if (seg[0] === 'personen') return <PersonenListe state={state} />
   if (seg[0] === 'personen-archiv' && istMaster) return <PersonenArchiv state={state} update={update} />
   if (seg[0] === 'person' && seg[1]) return <PersonEdit state={state} update={update} personId={seg[1]} />
@@ -181,7 +192,7 @@ function ApiApp() {
   if (info!.rolle === 'familie') {
     return (
       <BenutzerContext.Provider value={{ rolle: 'familie', email: info!.email }}>
-        <MeineKinder />
+        <FamilieRouter />
       </BenutzerContext.Provider>
     )
   }
