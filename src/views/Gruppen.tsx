@@ -72,7 +72,7 @@ export function GruppenListe({ state }: { state: AppState; update: Update }) {
         </div>
       )}
       {gruppen.map(g => {
-        const offen = g.aktivitaeten.filter(a => a.status === 'geplant' && a.datum <= heute()).length
+        const offen = g.aktivitaeten.filter(a => a.status === 'geplant' && !a.archiviert && a.datum <= heute()).length
         const erfasst = g.aktivitaeten.filter(a => a.status === 'durchgefuehrt').length
         return (
           <a className="karte" key={g.id} href={'#/gruppe/' + g.id}>
