@@ -272,6 +272,14 @@ function PersonGruppen({ state, update, person }: { state: AppState; update: Upd
       return n
     })
 
+  const funktionWechseln = (gruppeId: string, ziel: 'Leiter/in' | 'Teilnehmer/in') =>
+    update(s => {
+      const n = structuredClone(s)
+      const g = n.gruppen.find(x => x.id === gruppeId)!
+      g.mitglieder.find(m => m.personId === person.id)!.funktion = ziel
+      return n
+    })
+
   return (
     <div className="karte" style={{ padding: '0.2rem 1rem' }}>
       {gruppen.length === 0 && (
@@ -291,6 +299,14 @@ function PersonGruppen({ state, update, person }: { state: AppState; update: Upd
             </div>
             {mitglied?.funktion === 'Leiter/in' && <span className="pill leiter">Leiter/in</span>}
             {mitglied && statusVon(mitglied) === 'schnuppernd' && <span className="pill offen">Schnuppern</span>}
+            {aktiv && (
+              <button className="leise" onClick={e => {
+                e.stopPropagation()
+                funktionWechseln(g.id, mitglied!.funktion === 'Leiter/in' ? 'Teilnehmer/in' : 'Leiter/in')
+              }}>
+                {mitglied!.funktion === 'Leiter/in' ? '→ Team' : 'Als Coach hinzufügen'}
+              </button>
+            )}
           </div>
         )
       })}
