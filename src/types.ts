@@ -30,6 +30,9 @@ export interface Person {
   mobilVater?: string
   quelle: 'kool' | 'manuell'
   archiviert?: boolean // Admin hat die Person global archiviert — ausgeblendet, aber noch nicht endgültig gelöscht
+  // Wann eine der E-Mail-Adressen (eigene/Mutter/Vater) zuletzt ins Absenzentool eingeloggt hat —
+  // nur vom Server berechnet (familie_zugriff), nie vom Client geschrieben.
+  letzterLogin?: string
 }
 
 export type MitgliedStatus = 'aktiv' | 'schnuppernd' | 'archiviert'

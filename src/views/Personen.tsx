@@ -227,6 +227,11 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
               <F label="E-Mail Vater" anzeige={p.emailVater ?? ''} istTrainer={istTrainer}><input {...feld('emailVater')} /></F>
               <F label="Handy Vater" anzeige={p.mobilVater ?? ''} istTrainer={istTrainer}><input {...feld('mobilVater')} /></F>
             </div>
+            <div className="sub" style={{ marginBottom: '0.6rem' }}>
+              Absenzentool: {p.letzterLogin
+                ? `zuletzt eingeloggt am ${new Date(p.letzterLogin).toLocaleString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                : 'noch nie eingeloggt'}
+            </div>
             {!istTrainer && <button className="breit" onClick={speichern}>Speichern</button>}
           </div>
           {!istTrainer && !p.archiviert && (
@@ -292,19 +297,24 @@ function PersonFotos({ state, update, person }: { state: AppState; update: Updat
   const benutzer = useBenutzer()
   const darfBearbeiten = benutzer.rolle !== 'trainer' || !!benutzer.fotoRecht
   const [lädt, setLädt] = useState(false)
+  const [vorschau, setVorschau] = useState<string | null>(null)
   const fotos = fotosVonPerson(state.fotos, person.id)
   const saison = state.fotoSaison
+
+  const speichern = (datenUrl: string) => {
+    update(s => {
+      const n = structuredClone(s)
+      n.fotos = n.fotos.filter(f => !(f.personId === person.id && f.saison === saison))
+      n.fotos.push({ id: neueId(), personId: person.id, saison, datenUrl, hochgeladenAm: new Date().toISOString() })
+      return n
+    })
+    setVorschau(null)
+  }
 
   const hochladen = async (datei: File) => {
     setLädt(true)
     try {
-      const datenUrl = await komprimiertesFoto(datei)
-      update(s => {
-        const n = structuredClone(s)
-        n.fotos = n.fotos.filter(f => !(f.personId === person.id && f.saison === saison))
-        n.fotos.push({ id: neueId(), personId: person.id, saison, datenUrl, hochgeladenAm: new Date().toISOString() })
-        return n
-      })
+      speichern(await komprimiertesFoto(datei))
     } catch {
       alert('Foto konnte nicht verarbeitet werden.')
     } finally {
@@ -312,17 +322,27 @@ function PersonFotos({ state, update, person }: { state: AppState; update: Updat
     }
   }
 
-  // Bild aus der Zwischenablage per Cmd/Strg+V (bzw. Rechtsklick → Einfügen) übernehmen —
-  // das paste-Event ist plattformunabhängig. Landet im selben hochladen() wie der Datei-Upload.
-  const hochladenRef = useRef(hochladen)
-  hochladenRef.current = hochladen
+  // Bild aus der Zwischenablage per Cmd/Strg+V (bzw. Rechtsklick → Einfügen) übernehmen — das
+  // paste-Event ist plattformunabhängig. Nur eine Vorschau, damit ein versehentliches Einfügen
+  // (z. B. beim Kopieren von Text mit Bild-Anhang) nicht sofort ungewollt speichert.
+  const vorschauZeigenRef = useRef<((datei: File) => Promise<void>) | undefined>(undefined)
+  vorschauZeigenRef.current = async datei => {
+    setLädt(true)
+    try {
+      setVorschau(await komprimiertesFoto(datei))
+    } catch {
+      alert('Foto konnte nicht verarbeitet werden.')
+    } finally {
+      setLädt(false)
+    }
+  }
 
   useEffect(() => {
     if (!darfBearbeiten) return
     const beiPaste = (e: ClipboardEvent) => {
       const datei = [...(e.clipboardData?.items ?? [])]
         .find(i => i.type.startsWith('image/'))?.getAsFile()
-      if (datei) { e.preventDefault(); void hochladenRef.current(datei) }
+      if (datei) { e.preventDefault(); void vorschauZeigenRef.current?.(datei) }
     }
     document.addEventListener('paste', beiPaste)
     return () => document.removeEventListener('paste', beiPaste)
@@ -335,14 +355,27 @@ function PersonFotos({ state, update, person }: { state: AppState; update: Updat
     <div>
       {darfBearbeiten && (
         <div className="karte">
-          <label className="feld">Neues Foto für Saison {saison}
-            <input type="file" accept="image/*" disabled={lädt}
-              onChange={e => { const f = e.target.files?.[0]; if (f) void hochladen(f); e.target.value = '' }} />
-          </label>
-          <div className="sub" style={{ marginTop: '0.4rem' }}>
-            … oder ein kopiertes Bild mit Cmd/Strg+V einfügen.
-          </div>
-          {lädt && <div className="sub">Wird verarbeitet …</div>}
+          {vorschau ? (
+            <>
+              <div className="sub" style={{ marginBottom: '0.5rem' }}>Vorschau — für Saison {saison} speichern?</div>
+              <img src={vorschau} alt="" className="foto-gross" />
+              <div className="btnreihe">
+                <button onClick={() => speichern(vorschau)}>Speichern</button>
+                <button className="leise" onClick={() => setVorschau(null)}>Verwerfen</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <label className="feld">Neues Foto für Saison {saison}
+                <input type="file" accept="image/*" disabled={lädt}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) void hochladen(f); e.target.value = '' }} />
+              </label>
+              <div className="sub" style={{ marginTop: '0.4rem' }}>
+                … oder ein kopiertes Bild mit Cmd/Strg+V einfügen.
+              </div>
+              {lädt && <div className="sub">Wird verarbeitet …</div>}
+            </>
+          )}
         </div>
       )}
       {fotos.length === 0 && <div className="leer">Noch keine Fotos erfasst.</div>}

@@ -56,19 +56,24 @@ function TeamFotoSektion({ state, update, gruppeId }: { state: AppState; update:
   const benutzer = useBenutzer()
   const darfBearbeiten = benutzer.rolle !== 'trainer' || !!benutzer.fotoRecht
   const [lädt, setLädt] = useState(false)
+  const [vorschau, setVorschau] = useState<string | null>(null)
   const saison = state.fotoSaison
   const foto = neuestesTeamfoto(state.teamFotos, gruppeId)
+
+  const speichern = (datenUrl: string) => {
+    update(s => {
+      const n = structuredClone(s)
+      n.teamFotos = n.teamFotos.filter(f => !(f.gruppeId === gruppeId && f.saison === saison))
+      n.teamFotos.push({ id: neueId(), gruppeId, saison, datenUrl, hochgeladenAm: new Date().toISOString() })
+      return n
+    })
+    setVorschau(null)
+  }
 
   const hochladen = async (datei: File) => {
     setLädt(true)
     try {
-      const datenUrl = await komprimiertesTeamfoto(datei)
-      update(s => {
-        const n = structuredClone(s)
-        n.teamFotos = n.teamFotos.filter(f => !(f.gruppeId === gruppeId && f.saison === saison))
-        n.teamFotos.push({ id: neueId(), gruppeId, saison, datenUrl, hochgeladenAm: new Date().toISOString() })
-        return n
-      })
+      speichern(await komprimiertesTeamfoto(datei))
     } catch {
       alert('Foto konnte nicht verarbeitet werden.')
     } finally {
@@ -76,14 +81,33 @@ function TeamFotoSektion({ state, update, gruppeId }: { state: AppState; update:
     }
   }
 
-  // Bild aus der Zwischenablage per Cmd/Strg+V übernehmen (plattformunabhängig).
-  const hochladenRef = useRef(hochladen)
-  hochladenRef.current = hochladen
+  const löschen = (fotoId: string) => {
+    if (!confirm('Dieses Teamfoto endgültig löschen?')) return
+    update(s => {
+      const n = structuredClone(s)
+      n.teamFotos = n.teamFotos.filter(f => f.id !== fotoId)
+      return n
+    })
+  }
+
+  // Bild aus der Zwischenablage per Cmd/Strg+V übernehmen (plattformunabhängig) — nur eine
+  // Vorschau, damit ein versehentliches Einfügen nicht sofort ungewollt speichert.
+  const vorschauZeigenRef = useRef<((datei: File) => Promise<void>) | undefined>(undefined)
+  vorschauZeigenRef.current = async datei => {
+    setLädt(true)
+    try {
+      setVorschau(await komprimiertesTeamfoto(datei))
+    } catch {
+      alert('Foto konnte nicht verarbeitet werden.')
+    } finally {
+      setLädt(false)
+    }
+  }
   useEffect(() => {
     if (!darfBearbeiten) return
     const beiPaste = (e: ClipboardEvent) => {
       const datei = [...(e.clipboardData?.items ?? [])].find(i => i.type.startsWith('image/'))?.getAsFile()
-      if (datei) { e.preventDefault(); void hochladenRef.current(datei) }
+      if (datei) { e.preventDefault(); void vorschauZeigenRef.current?.(datei) }
     }
     document.addEventListener('paste', beiPaste)
     return () => document.removeEventListener('paste', beiPaste)
@@ -106,15 +130,30 @@ function TeamFotoSektion({ state, update, gruppeId }: { state: AppState; update:
         }} />
       )}
       {darfBearbeiten && (
-        <>
-          <label className="feld" style={{ marginTop: foto ? '0.5rem' : 0 }}>
-            {foto ? `Teamfoto für Saison ${saison} ersetzen` : `Teamfoto für Saison ${saison} hochladen (16:9)`}
-            <input type="file" accept="image/*" disabled={lädt}
-              onChange={e => { const f = e.target.files?.[0]; if (f) void hochladen(f); e.target.value = '' }} />
-          </label>
-          <div className="sub" style={{ marginTop: '-0.4rem' }}>… oder ein kopiertes Bild mit Cmd/Strg+V einfügen.</div>
-          {lädt && <div className="sub">Wird verarbeitet …</div>}
-        </>
+        vorschau ? (
+          <>
+            <div className="sub" style={{ margin: '0.5rem 0' }}>Vorschau — für Saison {saison} speichern?</div>
+            <img src={vorschau} alt="" style={{
+              width: '100%', aspectRatio: '16 / 9', objectFit: 'cover',
+              borderRadius: 'var(--radius-lg)', border: '2px solid var(--ink)', display: 'block',
+            }} />
+            <div className="btnreihe">
+              <button onClick={() => speichern(vorschau)}>Speichern</button>
+              <button className="leise" onClick={() => setVorschau(null)}>Verwerfen</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <label className="feld" style={{ marginTop: foto ? '0.5rem' : 0 }}>
+              {foto ? `Teamfoto für Saison ${saison} ersetzen` : `Teamfoto für Saison ${saison} hochladen (16:9)`}
+              <input type="file" accept="image/*" disabled={lädt}
+                onChange={e => { const f = e.target.files?.[0]; if (f) void hochladen(f); e.target.value = '' }} />
+            </label>
+            <div className="sub" style={{ marginTop: '-0.4rem' }}>… oder ein kopiertes Bild mit Cmd/Strg+V einfügen.</div>
+            {lädt && <div className="sub">Wird verarbeitet …</div>}
+            {foto && <button className="leise breit" style={{ marginTop: '0.4rem' }} onClick={() => löschen(foto.id)}>Teamfoto löschen</button>}
+          </>
+        )
       )}
       {frühere.length > 0 && (
         <details className="aufklapp" style={{ marginTop: '0.5rem' }}>
@@ -126,6 +165,7 @@ function TeamFotoSektion({ state, update, gruppeId }: { state: AppState; update:
                 width: '100%', aspectRatio: '16 / 9', objectFit: 'cover',
                 borderRadius: 'var(--radius-lg)', border: '1.5px solid var(--line)', display: 'block',
               }} />
+              {darfBearbeiten && <button className="leise breit" style={{ marginTop: '0.4rem' }} onClick={() => löschen(f.id)}>Löschen</button>}
             </div>
           ))}
         </details>

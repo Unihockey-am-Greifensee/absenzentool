@@ -21,6 +21,7 @@ import { AdminHub } from './views/Admin'
 import { GruppenVerwaltung } from './views/GruppenVerwaltung'
 import { Halbjahresabschluss } from './views/Halbjahresabschluss'
 import { MeineKinder, MeineKinderTermine } from './views/MeineKinder'
+import { PersonenFamilie } from './views/PersonenFamilie'
 import { FamilieZugriffe } from './views/FamilieZugriffe'
 
 export type Update = (fn: (s: AppState) => AppState) => void
@@ -56,6 +57,7 @@ export function useHashRoute(): string[] {
 function FamilieRouter() {
   const seg = useHashRoute()
   if (seg[0] === 'meine-kinder' && seg[1] === 'termine' && seg[2]) return <MeineKinderTermine personId={seg[2]} />
+  if (seg[0] === 'personen') return <PersonenFamilie />
   return <MeineKinder />
 }
 
@@ -219,24 +221,35 @@ export function Seite(props: {
         )}
         <h1>{props.titel}</h1>
         {benutzer.rolle !== 'lokal' && (
-          <button
-            className="konto"
-            onClick={() => {
-              if (!confirm('Abmelden?')) return
-              if (apiAktiv) apiAbmelden(); else firebaseAbmelden()
-            }}
-            title={`Angemeldet als ${benutzer.email}`}
-          >
-            {(benutzer.name || benutzer.email || '?').slice(0, 1).toUpperCase()}
-          </button>
+          <>
+            <span className="konto" title={`Angemeldet als ${benutzer.email}`}>
+              {(benutzer.name || benutzer.email || '?').slice(0, 1).toUpperCase()}
+            </span>
+            <button
+              className="abmelden"
+              title="Abmelden"
+              aria-label="Abmelden"
+              onClick={async () => {
+                if (!confirm('Abmelden?')) return
+                if (apiAktiv) { await apiAbmelden(); window.location.reload() } else await firebaseAbmelden()
+              }}
+            >
+              🚪
+            </button>
+          </>
         )}
       </div>
       {props.children}
       <nav className="bottomnav">
         {benutzer.rolle === 'familie' ? (
-          <a href="#/meine-kinder" className="aktiv">
-            <span className="icon">👪</span>Absenzentool
-          </a>
+          <>
+            <a href="#/meine-kinder" className={props.tab !== 'personen' ? 'aktiv' : ''}>
+              <span className="icon">👪</span>Absenzentool
+            </a>
+            <a href="#/personen" className={props.tab === 'personen' ? 'aktiv' : ''}>
+              <span className="icon">👥</span>Personen
+            </a>
+          </>
         ) : (
           <>
             <a href="#/" className={props.tab === 'gruppen' ? 'aktiv' : ''}>
