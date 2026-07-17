@@ -166,21 +166,13 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
             {termin.abgeschlossen ? (
               <button className="sekundaer breit" onClick={() => mutiere(a => { a.abgeschlossen = false })}>Wieder öffnen</button>
             ) : (
-              <button className="breit" onClick={() => mutiere(a => {
-                // Nur auffüllen, wenn bei diesem Termin bereits jemand erfasst wurde — ein
-                // komplett leerer Termin (z. B. Training fand nie statt) bleibt beim Abschliessen leer.
-                if (Object.keys(a.anwesenheit).length > 0) {
-                  for (const m of aktive) {
-                    if (anwesenheitStatus(a.anwesenheit[m.personId]) === undefined) a.anwesenheit[m.personId] = 'abgemeldet'
-                  }
-                }
-                a.abgeschlossen = true
-              })}>Abschliessen</button>
+              <button className="breit" disabled={zaehlung.offen > 0}
+                onClick={() => mutiere(a => { a.abgeschlossen = true })}>Abschliessen</button>
             )}
           </div>
-          {!termin.abgeschlossen && zaehlung.offen > 0 && zaehlung.offen < aktive.length && (
+          {!termin.abgeschlossen && zaehlung.offen > 0 && (
             <div className="sub" style={{ marginTop: '-0.6rem' }}>
-              Beim Abschliessen werden die restlichen {zaehlung.offen === 1 ? '1 Person' : `${zaehlung.offen} Personen`} automatisch auf «abgemeldet» gesetzt.
+              Erst möglich, wenn bei allen {zaehlung.offen === 1 ? 'noch 1 Person eine' : `noch ${zaehlung.offen} Personen eine`} Option ausgewählt wurde.
             </div>
           )}
         </>

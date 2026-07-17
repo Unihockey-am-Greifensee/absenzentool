@@ -101,6 +101,17 @@ export function PersonenArchiv({ state, update }: { state: AppState; update: Upd
   )
 }
 
+// Ausserhalb von PersonEdit definiert — sonst bekäme jedes Feld bei jedem Tastenanschlag einen
+// neuen Komponenten-Typ und würde von React neu gemountet, was den Fokus killt (nur 1 Buchstabe
+// tippbar).
+function F({ label, anzeige, istTrainer, children }: { label: string; anzeige: string; istTrainer: boolean; children: React.ReactNode }) {
+  return (
+    <label className="feld">{label}
+      {istTrainer ? <span className="feld-anzeige">{anzeige || '—'}</span> : children}
+    </label>
+  )
+}
+
 export function PersonEdit({ state, update, personId }: { state: AppState; update: Update; personId: string }) {
   const benutzer = useBenutzer()
   const istTrainer = benutzer.rolle === 'trainer'
@@ -148,11 +159,6 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
     })
 
   const geschlechtAnzeige = p.geschlecht === 'm' ? 'männlich' : p.geschlecht === 'w' ? 'weiblich' : ''
-  const F = ({ label, anzeige, children }: { label: string; anzeige: string; children: React.ReactNode }) => (
-    <label className="feld">{label}
-      {istTrainer ? <span className="feld-anzeige">{anzeige || '—'}</span> : children}
-    </label>
-  )
 
   return (
     <Seite titel={`${p.vorname} ${p.nachname}`} zurueck="personen" tab="personen">
@@ -177,10 +183,10 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
           )}
           <div className="karte">
             <div className="felder2">
-              <F label="Vorname" anzeige={p.vorname}><input {...feld('vorname')} /></F>
-              <F label="Nachname" anzeige={p.nachname}><input {...feld('nachname')} /></F>
-              <F label="Geburtsdatum" anzeige={p.geburtsdatum ?? ''}><input type="date" {...feld('geburtsdatum')} /></F>
-              <F label="Geschlecht" anzeige={geschlechtAnzeige}>
+              <F label="Vorname" anzeige={p.vorname} istTrainer={istTrainer}><input {...feld('vorname')} /></F>
+              <F label="Nachname" anzeige={p.nachname} istTrainer={istTrainer}><input {...feld('nachname')} /></F>
+              <F label="Geburtsdatum" anzeige={p.geburtsdatum ?? ''} istTrainer={istTrainer}><input type="date" {...feld('geburtsdatum')} /></F>
+              <F label="Geschlecht" anzeige={geschlechtAnzeige} istTrainer={istTrainer}>
                 <select {...feld('geschlecht')}>
                   <option value="">—</option><option value="m">männlich</option><option value="w">weiblich</option>
                 </select>
@@ -188,17 +194,17 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
             </div>
             <h2 className="abschnitt">Jugend+Sport</h2>
             <div className="felder2">
-              <F label="J+S-Personennummer" anzeige={p.jsNummer ?? ''}><input {...feld('jsNummer')} placeholder="z. B. 2837521" /></F>
+              <F label="J+S-Personennummer" anzeige={p.jsNummer ?? ''} istTrainer={istTrainer}><input {...feld('jsNummer')} placeholder="z. B. 2837521" /></F>
               {!istTrainer && <>
                 <label className="feld">AHV-Nummer<input {...feld('ahvNr')} placeholder="756.…" /></label>
                 <label className="feld">PEID (nur FL)<input {...feld('peid')} /></label>
               </>}
-              <F label="Nationalität" anzeige={p.nationalitaet ?? ''}>
+              <F label="Nationalität" anzeige={p.nationalitaet ?? ''} istTrainer={istTrainer}>
                 <select {...feld('nationalitaet')}>
                   <option value="CH">CH</option><option value="FL">FL</option><option value="Andere">Andere</option>
                 </select>
               </F>
-              <F label="Muttersprache" anzeige={p.muttersprache ?? ''}>
+              <F label="Muttersprache" anzeige={p.muttersprache ?? ''} istTrainer={istTrainer}>
                 <select {...feld('muttersprache')}>
                   <option value="DE">DE</option><option value="FR">FR</option><option value="IT">IT</option><option value="Andere">Andere</option>
                 </select>
@@ -206,20 +212,20 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
             </div>
             <h2 className="abschnitt">Adresse</h2>
             <div className="felder2">
-              <F label="Strasse" anzeige={p.strasse ?? ''}><input {...feld('strasse')} /></F>
-              <F label="Hausnummer" anzeige={p.hausnummer ?? ''}><input {...feld('hausnummer')} /></F>
-              <F label="PLZ" anzeige={p.plz ?? ''}><input {...feld('plz')} /></F>
-              <F label="Ort" anzeige={p.ort ?? ''}><input {...feld('ort')} /></F>
-              <F label="Land (ISO)" anzeige={p.land ?? ''}><input {...feld('land')} placeholder="CH" /></F>
+              <F label="Strasse" anzeige={p.strasse ?? ''} istTrainer={istTrainer}><input {...feld('strasse')} /></F>
+              <F label="Hausnummer" anzeige={p.hausnummer ?? ''} istTrainer={istTrainer}><input {...feld('hausnummer')} /></F>
+              <F label="PLZ" anzeige={p.plz ?? ''} istTrainer={istTrainer}><input {...feld('plz')} /></F>
+              <F label="Ort" anzeige={p.ort ?? ''} istTrainer={istTrainer}><input {...feld('ort')} /></F>
+              <F label="Land (ISO)" anzeige={p.land ?? ''} istTrainer={istTrainer}><input {...feld('land')} placeholder="CH" /></F>
             </div>
             <h2 className="abschnitt">Kontakt</h2>
             <div className="felder2">
-              <F label="E-Mail" anzeige={p.email ?? ''}><input {...feld('email')} /></F>
-              <F label="Mobiltelefon" anzeige={p.mobil ?? ''}><input {...feld('mobil')} /></F>
-              <F label="E-Mail Mutter" anzeige={p.emailMutter ?? ''}><input {...feld('emailMutter')} /></F>
-              <F label="Handy Mutter" anzeige={p.mobilMutter ?? ''}><input {...feld('mobilMutter')} /></F>
-              <F label="E-Mail Vater" anzeige={p.emailVater ?? ''}><input {...feld('emailVater')} /></F>
-              <F label="Handy Vater" anzeige={p.mobilVater ?? ''}><input {...feld('mobilVater')} /></F>
+              <F label="E-Mail" anzeige={p.email ?? ''} istTrainer={istTrainer}><input {...feld('email')} /></F>
+              <F label="Mobiltelefon" anzeige={p.mobil ?? ''} istTrainer={istTrainer}><input {...feld('mobil')} /></F>
+              <F label="E-Mail Mutter" anzeige={p.emailMutter ?? ''} istTrainer={istTrainer}><input {...feld('emailMutter')} /></F>
+              <F label="Handy Mutter" anzeige={p.mobilMutter ?? ''} istTrainer={istTrainer}><input {...feld('mobilMutter')} /></F>
+              <F label="E-Mail Vater" anzeige={p.emailVater ?? ''} istTrainer={istTrainer}><input {...feld('emailVater')} /></F>
+              <F label="Handy Vater" anzeige={p.mobilVater ?? ''} istTrainer={istTrainer}><input {...feld('mobilVater')} /></F>
             </div>
             {!istTrainer && <button className="breit" onClick={speichern}>Speichern</button>}
           </div>

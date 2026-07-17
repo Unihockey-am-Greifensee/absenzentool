@@ -269,3 +269,18 @@ export async function fristenLaden(): Promise<Fristen> {
 export async function fristenSpeichern(fristen: Fristen): Promise<void> {
   await apiFetch('/api/einstellungen', { method: 'PUT', body: JSON.stringify(fristen) }).then(pruefen)
 }
+
+// --- Admin-Übersicht: wer hat die An-/Abmeldefunktion tatsächlich genutzt ---
+
+export interface FamilieZugriff {
+  email: string
+  ersterLogin: string
+  letzterLogin: string
+  anzahlLogins: number
+  kinder: { id: string; vorname: string; nachname: string }[]
+}
+
+export async function familieZugriffeLaden(): Promise<FamilieZugriff[]> {
+  const res = await apiFetch('/api/familie-zugriffe').then(pruefen)
+  return res.json()
+}

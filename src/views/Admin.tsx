@@ -53,7 +53,10 @@ export function AdminHub({ state, update }: { state: AppState; update: Update })
         <a className="btn sekundaer breit" href="#/gruppen-verwalten">Gruppen verwalten</a>
         <a className="btn sekundaer breit" href="#/import">kOOL-Export importieren</a>
         {benutzer.rolle === 'master' && (
-          <a className="btn sekundaer breit" href="#/trainer">Trainer-Verwaltung</a>
+          <>
+            <a className="btn sekundaer breit" href="#/trainer">Trainer-Verwaltung</a>
+            <a className="btn sekundaer breit" href="#/familie-zugriffe">Absenzentool-Zugriffe</a>
+          </>
         )}
         <a className="btn sekundaer breit" href="#/nds-export">NDS-Export</a>
         <a className="btn sekundaer breit" href="#/halbjahresabschluss">Halbjahresabschluss</a>

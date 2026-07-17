@@ -21,6 +21,7 @@ import { AdminHub } from './views/Admin'
 import { GruppenVerwaltung } from './views/GruppenVerwaltung'
 import { Halbjahresabschluss } from './views/Halbjahresabschluss'
 import { MeineKinder } from './views/MeineKinder'
+import { FamilieZugriffe } from './views/FamilieZugriffe'
 
 export type Update = (fn: (s: AppState) => AppState) => void
 
@@ -66,6 +67,7 @@ function Router({ state, update }: { state: AppState; update: Update }) {
   if (seg[0] === 'export' && istMaster) return <AdminHub state={state} update={update} />
   if (seg[0] === 'nds-export' && istMaster) return <ExportView state={state} />
   if (seg[0] === 'trainer' && benutzer.rolle === 'master') return <TrainerAdmin eigeneEmail={benutzer.email!} />
+  if (seg[0] === 'familie-zugriffe' && benutzer.rolle === 'master') return <FamilieZugriffe />
   if (seg[0] === 'backup' && istMaster) return <BackupView state={state} update={update} />
   if (seg[0] === 'gruppen-verwalten' && istMaster) return <GruppenVerwaltung state={state} update={update} />
   if (seg[0] === 'halbjahresabschluss' && istMaster) return <Halbjahresabschluss state={state} update={update} />
