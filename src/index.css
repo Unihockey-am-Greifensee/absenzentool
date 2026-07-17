@@ -184,11 +184,13 @@ label.feld input, label.feld select {
 .foto-icon {
   /* Feste Grösse statt auto/aspect-ratio: Flexbox bemisst die Breite eines
      Bildes VOR der Zeilenhöhe, wodurch die echte Bildgrösse (480×480px)
-     durchschlägt, egal was align-self/aspect-ratio sagen. Die Grösse
-     entspricht der Höhe des zweizeiligen Textblocks (Titel 1rem + Sub 0.8rem,
-     je line-height 1.5 = 2.7rem), damit Zeilen mit Foto nicht höher werden
-     als solche ohne. */
-  width: 2.7rem; height: 2.7rem;
+     durchschlägt, egal was align-self/aspect-ratio sagen. */
+  width: calc(4rem - 4px); height: calc(4rem - 4px);
+  /* Negative vertikale Margins ziehen das Foto ins Zeilen-Padding hinein: Es
+     füllt die Zeilenhöhe mit nur 2px Abstand zu ober-/unterer Linie, OHNE die
+     Zeile höher zu machen als eine reine Textzeile (Titel + Sub). Kein
+     horizontaler Bleed — das Foto steht eingerückt auf der normalen Zeilenposition. */
+  margin-block: calc(-0.65rem + 2px);
   border-radius: var(--radius-md); border: 1.5px solid var(--line);
   object-fit: cover; flex-shrink: 0;
 }
