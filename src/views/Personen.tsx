@@ -319,27 +319,10 @@ function PersonFotos({ state, update, person }: { state: AppState; update: Updat
     }
   }
 
-  // Bild aus der Zwischenablage einfügen: einmal per Knopf (Clipboard-API) und
-  // zusätzlich per Cmd/Strg+V (Paste-Event), beide landen bei hochladen().
+  // Bild aus der Zwischenablage per Cmd/Strg+V (bzw. Rechtsklick → Einfügen) übernehmen —
+  // das paste-Event ist plattformunabhängig. Landet im selben hochladen() wie der Datei-Upload.
   const hochladenRef = useRef(hochladen)
   hochladenRef.current = hochladen
-
-  const ausZwischenablage = async () => {
-    try {
-      const inhalte = await navigator.clipboard.read()
-      for (const eintrag of inhalte) {
-        const typ = eintrag.types.find(t => t.startsWith('image/'))
-        if (typ) {
-          const blob = await eintrag.getType(typ)
-          await hochladen(new File([blob], 'zwischenablage', { type: blob.type }))
-          return
-        }
-      }
-      alert('Kein Bild in der Zwischenablage gefunden. Kopiere zuerst ein Bild.')
-    } catch {
-      alert('Zwischenablage konnte nicht gelesen werden. Du kannst das Bild auch direkt mit Cmd/Strg+V einfügen.')
-    }
-  }
 
   useEffect(() => {
     if (!darfBearbeiten) return
@@ -363,12 +346,8 @@ function PersonFotos({ state, update, person }: { state: AppState; update: Updat
             <input type="file" accept="image/*" disabled={lädt}
               onChange={e => { const f = e.target.files?.[0]; if (f) void hochladen(f); e.target.value = '' }} />
           </label>
-          <button type="button" className="sekundaer breit" disabled={lädt}
-            style={{ marginTop: '0.5rem' }} onClick={() => void ausZwischenablage()}>
-            📋 Aus Zwischenablage einfügen
-          </button>
           <div className="sub" style={{ marginTop: '0.4rem' }}>
-            … oder das Bild direkt mit Cmd/Strg+V einfügen.
+            … oder ein kopiertes Bild mit Cmd/Strg+V einfügen.
           </div>
           {lädt && <div className="sub">Wird verarbeitet …</div>}
         </div>
