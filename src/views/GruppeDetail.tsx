@@ -296,16 +296,6 @@ function MitgliederSektionen({ state, update, gruppeId }: { state: AppState; upd
       return n
     })
 
-  // Nachträglich zwischen Coach und Team wechseln — bisher liess sich die Funktion nur beim
-  // Hinzufügen wählen (MitgliederVerwaltung), nicht mehr danach.
-  const funktionWechseln = (personId: string, ziel: Funktion) =>
-    update(s => {
-      const n = structuredClone(s)
-      const g = n.gruppen.find(g => g.id === gruppeId)!
-      g.mitglieder.find(m => m.personId === personId)!.funktion = ziel
-      return n
-    })
-
   const endgueltigLoeschen = (personId: string) => {
     const name = nameVon(personById, personId)
     const frage = hatAnwesenheit(gruppe, personId)
@@ -329,7 +319,6 @@ function MitgliederSektionen({ state, update, gruppeId }: { state: AppState; upd
         onArchivieren={() => {
           if (confirm(`${p.vorname} ${p.nachname} ins Archiv verschieben? Anwesenheiten bleiben für den NDS-Export erhalten.`)) archivieren(m.personId)
         }}
-        onFunktionWechseln={ziel => funktionWechseln(m.personId, ziel)}
       />
     )
   }
@@ -387,9 +376,9 @@ function MitgliederSektionen({ state, update, gruppeId }: { state: AppState; upd
  * nachladen), und ein inline definierter Komponenten-Typ würde bei jedem Render neu gemountet
  * (siehe gleiches Problem bei der F-Komponente in Personen.tsx).
  */
-function MitgliedZeile({ person, mitglied, foto, pillText, onArchivieren, onFunktionWechseln }: {
+function MitgliedZeile({ person, mitglied, foto, pillText, onArchivieren }: {
   person: Person; mitglied: Mitglied; foto?: string; pillText?: string
-  onArchivieren: () => void; onFunktionWechseln: (ziel: Funktion) => void
+  onArchivieren: () => void
 }) {
   const istCoach = mitglied.funktion === 'Leiter/in'
   const [stufe, setStufe] = useState<string | null | undefined>(undefined) // undefined = lädt noch
@@ -411,9 +400,6 @@ function MitgliedZeile({ person, mitglied, foto, pillText, onArchivieren, onFunk
         <div className="sub">{unterzeile}{!person.jsNummer && ' · ⚠ keine J+S-Nr.'}</div>
       </div>
       {pillText && <span className="pill leiter">{pillText}</span>}
-      <button className="leise" onClick={() => onFunktionWechseln(istCoach ? 'Teilnehmer/in' : 'Leiter/in')}>
-        {istCoach ? '→ Team' : '→ Coach'}
-      </button>
       <button className="leise" onClick={onArchivieren}>Archivieren</button>
     </div>
   )
