@@ -6,6 +6,8 @@ import { statusVon } from '../lib/mitglieder'
 import { istAnwesend } from '../lib/anwesenheit'
 import { fotosVonPerson } from '../lib/saison'
 import { komprimiertesFoto } from '../lib/foto'
+import { kurseLaden, kursSetzen, kursEntfernen, type Kurs, type KursEintrag } from '../lib/apiSync'
+import { NOMINATIONEN, KURSE, BEFOERDERUNG, stufeBerechnen } from '../lib/kurse'
 
 export function PersonenListe({ state }: { state: AppState }) {
   const benutzer = useBenutzer()
@@ -117,7 +119,8 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
   const istTrainer = benutzer.rolle === 'trainer'
   const vorhanden = state.personen.find(p => p.id === personId)
   const [p, setP] = useState<Person | undefined>(vorhanden)
-  const [tab, setTab] = useState<'angaben' | 'gruppen' | 'fotos'>('angaben')
+  const [tab, setTab] = useState<'angaben' | 'gruppen' | 'fotos' | 'kurse'>('angaben')
+  const istLeiterIn = state.gruppen.some(g => g.mitglieder.some(m => m.personId === personId && m.funktion === 'Leiter/in'))
 
   if (!vorhanden || !p) {
     return <Seite titel="Person nicht gefunden" zurueck="personen" tab="personen"><div className="leer">Diese Person existiert nicht (mehr).</div></Seite>
@@ -166,6 +169,7 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
         <button className={tab === 'angaben' ? '' : 'sekundaer'} onClick={() => setTab('angaben')}>Angaben</button>
         <button className={tab === 'gruppen' ? '' : 'sekundaer'} onClick={() => setTab('gruppen')}>Gruppen</button>
         <button className={tab === 'fotos' ? '' : 'sekundaer'} onClick={() => setTab('fotos')}>Fotos</button>
+        {istLeiterIn && <button className={tab === 'kurse' ? '' : 'sekundaer'} onClick={() => setTab('kurse')}>Kurse</button>}
       </div>
 
       {tab === 'angaben' && (
@@ -244,6 +248,7 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
 
       {tab === 'gruppen' && <PersonGruppen state={state} update={update} person={p} />}
       {tab === 'fotos' && <PersonFotos state={state} update={update} person={p} />}
+      {tab === 'kurse' && istLeiterIn && <PersonKurse person={p} />}
     </Seite>
   )
 }
@@ -389,6 +394,90 @@ function PersonFotos({ state, update, person }: { state: AppState; update: Updat
           )}
         </div>
       ))}
+    </div>
+  )
+}
+
+function KursZeile({ label, kurs, eintrag, darfBearbeiten, aktualisieren, personId }: {
+  label: string; kurs: Kurs; eintrag?: KursEintrag; darfBearbeiten: boolean; aktualisieren: () => void; personId: string
+}) {
+  const [datum, setDatum] = useState(() => new Date().toISOString().slice(0, 10))
+  const [läuft, setLäuft] = useState(false)
+
+  const setzen = async () => {
+    setLäuft(true)
+    try { await kursSetzen(personId, kurs, datum); aktualisieren() } finally { setLäuft(false) }
+  }
+  const entfernen = async () => {
+    if (!confirm(`"${label}" wirklich wieder entfernen?`)) return
+    setLäuft(true)
+    try { await kursEntfernen(personId, kurs); aktualisieren() } finally { setLäuft(false) }
+  }
+
+  return (
+    <div className="zeile">
+      <div className="haupt">
+        <div className="titel">{label}</div>
+        {eintrag && <div className="sub">absolviert am {new Date(eintrag.datum).toLocaleDateString('de-CH')}</div>}
+      </div>
+      {eintrag ? (
+        darfBearbeiten ? <button className="leise" disabled={läuft} onClick={() => void entfernen()}>Entfernen</button> : <span className="pill ok">✓</span>
+      ) : darfBearbeiten ? (
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+          <input type="date" value={datum} onChange={e => setDatum(e.target.value)} style={{ width: '9.5rem' }} />
+          <button className="sekundaer" disabled={läuft} onClick={() => void setzen()}>Markieren</button>
+        </div>
+      ) : (
+        <span className="pill offen">offen</span>
+      )}
+    </div>
+  )
+}
+
+function PersonKurse({ person }: { person: Person }) {
+  const benutzer = useBenutzer()
+  const istMaster = benutzer.rolle === 'master'
+  const [eintraege, setEintraege] = useState<KursEintrag[] | null>(null)
+
+  const laden = () => { kurseLaden(person.id).then(setEintraege) }
+  useEffect(laden, [person.id])
+
+  if (!eintraege) return <div className="sub" style={{ padding: '1rem 0' }}>Lädt …</div>
+
+  const stufe = stufeBerechnen(eintraege)
+  const eintragVon = (kurs: Kurs) => eintraege.find(e => e.kurs === kurs)
+
+  return (
+    <div>
+      <div className="hinweis info">
+        Aktuelle Stufe: <b>{stufe ?? 'noch keine Stufe erreicht'}</b>
+      </div>
+
+      <h2 className="abschnitt">Nominationen</h2>
+      <div className="karte" style={{ padding: '0.2rem 1rem' }}>
+        {NOMINATIONEN.map(({ kurs, label }) => (
+          <KursZeile key={kurs} label={label} kurs={kurs} eintrag={eintragVon(kurs)}
+            darfBearbeiten={istMaster || !!benutzer.nachwuchsVerantwortlich} aktualisieren={laden} personId={person.id} />
+        ))}
+      </div>
+
+      <h2 className="abschnitt">Kurse</h2>
+      <div className="karte" style={{ padding: '0.2rem 1rem' }}>
+        {KURSE.map(({ kurs, label }) => (
+          <KursZeile key={kurs} label={label} kurs={kurs} eintrag={eintragVon(kurs)}
+            darfBearbeiten={istMaster || !!benutzer.kursRecht} aktualisieren={laden} personId={person.id} />
+        ))}
+      </div>
+
+      <h2 className="abschnitt">Beförderung</h2>
+      <div className="sub" style={{ margin: '-0.3rem 0 0.5rem' }}>
+        Normalerweise werden Co-Coaches nach Abschluss der 9. Klasse zum Coach befördert — entschieden
+        im Gespräch mit dem Ausbildungsverantwortlichen, kein automatisches Kriterium.
+      </div>
+      <div className="karte" style={{ padding: '0.2rem 1rem' }}>
+        <KursZeile label={BEFOERDERUNG.label} kurs={BEFOERDERUNG.kurs} eintrag={eintragVon(BEFOERDERUNG.kurs)}
+          darfBearbeiten={istMaster || !!benutzer.kursRecht} aktualisieren={laden} personId={person.id} />
+      </div>
     </div>
   )
 }

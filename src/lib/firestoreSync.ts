@@ -23,6 +23,8 @@ export interface TrainerInfo {
   rolle: 'master' | 'trainer' | 'familie'
   name?: string
   fotoRecht?: boolean // Trainer darf Personen-Fotos hochladen/löschen
+  kursRecht?: boolean // Ausbildungsverantwortlicher: darf Kurse markieren
+  nachwuchsVerantwortlich?: boolean // darf die Coach-Nominationen markieren
 }
 
 /** Ein freigeschaltetes Trainer-Konto (trainer-Tabelle) — nie 'familie', im Unterschied zu TrainerInfo. */
@@ -31,6 +33,8 @@ export interface TrainerKonto {
   rolle: 'master' | 'trainer'
   name?: string
   fotoRecht?: boolean
+  kursRecht?: boolean
+  nachwuchsVerantwortlich?: boolean
 }
 
 export interface GruppeMeta {
@@ -282,7 +286,7 @@ export function trainerAbonnieren(
     () => auf(null))
 }
 
-export async function trainerSpeichern(email: string, daten: { rolle: 'master' | 'trainer'; name?: string; fotoRecht?: boolean }): Promise<void> {
+export async function trainerSpeichern(email: string, daten: { rolle: 'master' | 'trainer'; name?: string; fotoRecht?: boolean; kursRecht?: boolean; nachwuchsVerantwortlich?: boolean }): Promise<void> {
   if (!db) return
   await setDoc(doc(db, 'trainer', email.toLowerCase()), ohneUndefined(daten))
 }

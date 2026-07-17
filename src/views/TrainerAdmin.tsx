@@ -27,11 +27,23 @@ export function TrainerAdmin({ eigeneEmail }: { eigeneEmail: string }) {
               <div className="titel">{t.name || t.email}</div>
               <div className="sub">{t.email}</div>
               {t.rolle === 'trainer' && (
-                <label className="sub" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.3rem', fontWeight: 700 }}>
-                  <input type="checkbox" checked={!!t.fotoRecht}
-                    onChange={e => trainerSpeichern(t.email, { rolle: t.rolle, name: t.name, fotoRecht: e.target.checked || undefined })} />
-                  Foto-Recht
-                </label>
+                <>
+                  <label className="sub" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.3rem', fontWeight: 700 }}>
+                    <input type="checkbox" checked={!!t.fotoRecht}
+                      onChange={e => trainerSpeichern(t.email, { rolle: t.rolle, name: t.name, fotoRecht: e.target.checked || undefined, kursRecht: t.kursRecht, nachwuchsVerantwortlich: t.nachwuchsVerantwortlich })} />
+                    Foto-Recht
+                  </label>
+                  <label className="sub" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.3rem', fontWeight: 700 }}>
+                    <input type="checkbox" checked={!!t.kursRecht}
+                      onChange={e => trainerSpeichern(t.email, { rolle: t.rolle, name: t.name, fotoRecht: t.fotoRecht, kursRecht: e.target.checked || undefined, nachwuchsVerantwortlich: t.nachwuchsVerantwortlich })} />
+                    Ausbildungsverantwortlicher (Kurse verwalten)
+                  </label>
+                  <label className="sub" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.3rem', fontWeight: 700 }}>
+                    <input type="checkbox" checked={!!t.nachwuchsVerantwortlich}
+                      onChange={e => trainerSpeichern(t.email, { rolle: t.rolle, name: t.name, fotoRecht: t.fotoRecht, kursRecht: t.kursRecht, nachwuchsVerantwortlich: e.target.checked || undefined })} />
+                    Nachwuchs-Verantwortlicher
+                  </label>
+                </>
               )}
             </div>
             {t.rolle === 'master' && <span className="pill leiter">Admin</span>}

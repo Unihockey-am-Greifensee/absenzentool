@@ -31,6 +31,8 @@ export interface Benutzer {
   email?: string
   name?: string
   fotoRecht?: boolean // Trainer darf Personen-Fotos hochladen/löschen (Admin darf immer)
+  kursRecht?: boolean // Ausbildungsverantwortlicher: darf Kurse (Trainer-Qualifikationsstufen) markieren
+  nachwuchsVerantwortlich?: boolean // darf die Coach-Nominationen markieren
 }
 
 export const BenutzerContext = createContext<Benutzer>({ rolle: 'lokal' })
@@ -143,7 +145,10 @@ function SyncApp({ info, sync }: { info: TrainerInfo; sync: Synchronisierung }) 
   }
   if (!state) return <LadeAnzeige text="Lade Daten …" />
   return (
-    <BenutzerContext.Provider value={{ rolle: info.rolle, email: info.email, name: info.name, fotoRecht: info.fotoRecht }}>
+    <BenutzerContext.Provider value={{
+      rolle: info.rolle, email: info.email, name: info.name, fotoRecht: info.fotoRecht,
+      kursRecht: info.kursRecht, nachwuchsVerantwortlich: info.nachwuchsVerantwortlich,
+    }}>
       <Router state={state} update={update} />
     </BenutzerContext.Provider>
   )

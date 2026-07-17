@@ -241,7 +241,7 @@ export async function diffSchreiben(alt: AppState, neu: AppState, _istMaster: bo
   }
 }
 
-export async function trainerSpeichern(email: string, daten: { rolle: 'master' | 'trainer'; name?: string; fotoRecht?: boolean }): Promise<void> {
+export async function trainerSpeichern(email: string, daten: { rolle: 'master' | 'trainer'; name?: string; fotoRecht?: boolean; kursRecht?: boolean; nachwuchsVerantwortlich?: boolean }): Promise<void> {
   await apiFetch(`/api/trainer/${encodeURIComponent(email.toLowerCase())}`, { method: 'PUT', body: JSON.stringify(daten) }).then(pruefen)
 }
 
@@ -283,4 +283,29 @@ export interface FamilieZugriff {
 export async function familieZugriffeLaden(): Promise<FamilieZugriff[]> {
   const res = await apiFetch('/api/familie-zugriffe').then(pruefen)
   return res.json()
+}
+
+// --- Trainer-Qualifikationsstufen (Kurse/Nominationen), siehe lib/kurse.ts für die Stufenlogik ---
+
+export type Kurs =
+  | 'anfrage_co_coach_ia' | 'jungtrainer_besj' | '1418coach' | 'leiterkurs1_besj'
+  | 'leiterkurs2_besj' | 'js_leiterkurs' | 'befoerderung_coach' | 'headcoach_bestimmt'
+
+export interface KursEintrag {
+  kurs: Kurs
+  datum: string
+  eingetragenVon: string
+}
+
+export async function kurseLaden(personId: string): Promise<KursEintrag[]> {
+  const res = await apiFetch(`/api/kurse/${personId}`).then(pruefen)
+  return res.json()
+}
+
+export async function kursSetzen(personId: string, kurs: Kurs, datum: string): Promise<void> {
+  await apiFetch(`/api/kurse/${personId}/${kurs}`, { method: 'PUT', body: JSON.stringify({ datum }) }).then(pruefen)
+}
+
+export async function kursEntfernen(personId: string, kurs: Kurs): Promise<void> {
+  await apiFetch(`/api/kurse/${personId}/${kurs}`, { method: 'DELETE' }).then(pruefen)
 }
