@@ -20,10 +20,9 @@ export function PersonenListe({ state }: { state: AppState }) {
   return (
     <Seite titel="Personen" tab="personen">
       <input className="suchfeld" placeholder="Suchen …" value={suche} onChange={e => setSuche(e.target.value)} />
-      {istAdmin && (
+      {istAdmin && archivAnzahl > 0 && (
         <div className="btnreihe" style={{ marginTop: 0 }}>
-          <a className="btn sekundaer" href="#/person/neu">+ Neue Person</a>
-          {archivAnzahl > 0 && <a className="btn leise" href="#/personen-archiv">Archiv ({archivAnzahl})</a>}
+          <a className="btn leise" href="#/personen-archiv">Archiv ({archivAnzahl})</a>
         </div>
       )}
       <div className="sub" style={{ marginBottom: '0.5rem', color: 'var(--muted)' }}>
@@ -105,20 +104,12 @@ export function PersonenArchiv({ state, update }: { state: AppState; update: Upd
 export function PersonEdit({ state, update, personId }: { state: AppState; update: Update; personId: string }) {
   const benutzer = useBenutzer()
   const istTrainer = benutzer.rolle === 'trainer'
-  const istNeu = personId === 'neu'
   const vorhanden = state.personen.find(p => p.id === personId)
-  const [p, setP] = useState<Person>(
-    vorhanden ?? { id: neueId(), vorname: '', nachname: '', quelle: 'manuell', land: 'CH', nationalitaet: 'CH', muttersprache: 'DE' }
-  )
+  const [p, setP] = useState<Person | undefined>(vorhanden)
   const [tab, setTab] = useState<'angaben' | 'gruppen' | 'fotos'>('angaben')
 
-  if (!istNeu && !vorhanden) {
+  if (!vorhanden || !p) {
     return <Seite titel="Person nicht gefunden" zurueck="personen" tab="personen"><div className="leer">Diese Person existiert nicht (mehr).</div></Seite>
-  }
-  if (istNeu && istTrainer) {
-    return <Seite titel="Neue Person" zurueck="personen" tab="personen">
-      <div className="leer">Neue Personen erfasst nur der Admin — wende dich an die Absenzen-Verantwortung.</div>
-    </Seite>
   }
 
   const feld = (k: keyof Person) => ({
@@ -132,9 +123,7 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
     if (!p.vorname.trim() || !p.nachname.trim()) { alert('Vor- und Nachname sind Pflicht.'); return }
     update(s => {
       const n = structuredClone(s)
-      const idx = n.personen.findIndex(x => x.id === p.id)
-      if (idx >= 0) n.personen[idx] = p
-      else n.personen.push(p)
+      n.personen[n.personen.findIndex(x => x.id === p.id)] = p
       return n
     })
     window.location.hash = '#/personen'
@@ -166,14 +155,12 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
   )
 
   return (
-    <Seite titel={istNeu ? 'Neue Person' : `${p.vorname} ${p.nachname}`} zurueck="personen" tab="personen">
-      {!istNeu && (
-        <div className="btnreihe" style={{ marginTop: 0 }}>
-          <button className={tab === 'angaben' ? '' : 'sekundaer'} onClick={() => setTab('angaben')}>Angaben</button>
-          <button className={tab === 'gruppen' ? '' : 'sekundaer'} onClick={() => setTab('gruppen')}>Gruppen</button>
-          <button className={tab === 'fotos' ? '' : 'sekundaer'} onClick={() => setTab('fotos')}>Fotos</button>
-        </div>
-      )}
+    <Seite titel={`${p.vorname} ${p.nachname}`} zurueck="personen" tab="personen">
+      <div className="btnreihe" style={{ marginTop: 0 }}>
+        <button className={tab === 'angaben' ? '' : 'sekundaer'} onClick={() => setTab('angaben')}>Angaben</button>
+        <button className={tab === 'gruppen' ? '' : 'sekundaer'} onClick={() => setTab('gruppen')}>Gruppen</button>
+        <button className={tab === 'fotos' ? '' : 'sekundaer'} onClick={() => setTab('fotos')}>Fotos</button>
+      </div>
 
       {tab === 'angaben' && (
         <>
@@ -236,7 +223,7 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
             </div>
             {!istTrainer && <button className="breit" onClick={speichern}>Speichern</button>}
           </div>
-          {!istTrainer && !istNeu && !p.archiviert && (
+          {!istTrainer && !p.archiviert && (
             <div className="btnreihe">
               <button className="leise breit" onClick={archivieren}>Person archivieren</button>
             </div>
@@ -244,8 +231,8 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
         </>
       )}
 
-      {tab === 'gruppen' && !istNeu && <PersonGruppen state={state} update={update} person={p} />}
-      {tab === 'fotos' && !istNeu && <PersonFotos state={state} update={update} person={p} />}
+      {tab === 'gruppen' && <PersonGruppen state={state} update={update} person={p} />}
+      {tab === 'fotos' && <PersonFotos state={state} update={update} person={p} />}
     </Seite>
   )
 }

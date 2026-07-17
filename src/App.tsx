@@ -58,6 +58,7 @@ function Router({ state, update }: { state: AppState; update: Update }) {
   if (seg[0] === 'gruppe' && seg[1] && seg[2] === 'kommend') return <TermineListe state={state} gruppeId={seg[1]} modus="kommend" />
   if (seg[0] === 'gruppe' && seg[1] && seg[2] === 'archiv') return <TermineListe state={state} gruppeId={seg[1]} modus="archiviert" />
   if (seg[0] === 'gruppe' && seg[1]) return <GruppeDetail state={state} update={update} gruppeId={seg[1]} />
+  if (seg[0] === 'meine-kinder') return <MeineKinder />
   if (seg[0] === 'personen') return <PersonenListe state={state} />
   if (seg[0] === 'personen-archiv' && istMaster) return <PersonenArchiv state={state} update={update} />
   if (seg[0] === 'person' && seg[1]) return <PersonEdit state={state} update={update} personId={seg[1]} />
@@ -193,7 +194,7 @@ export default function App() {
 export function Seite(props: {
   titel: string
   zurueck?: string
-  tab?: 'gruppen' | 'personen' | 'export'
+  tab?: 'gruppen' | 'meine-kinder' | 'personen' | 'export'
   children: React.ReactNode
 }) {
   const benutzer = useBenutzer()
@@ -218,21 +219,32 @@ export function Seite(props: {
         )}
       </div>
       {props.children}
-      {benutzer.rolle !== 'familie' && (
-        <nav className="bottomnav">
-          <a href="#/" className={props.tab === 'gruppen' ? 'aktiv' : ''}>
-            <span className="icon">🏑</span>Gruppen
+      <nav className="bottomnav">
+        {benutzer.rolle === 'familie' ? (
+          <a href="#/meine-kinder" className="aktiv">
+            <span className="icon">👪</span>Absenzentool
           </a>
-          <a href="#/personen" className={props.tab === 'personen' ? 'aktiv' : ''}>
-            <span className="icon">👥</span>Personen
-          </a>
-          {benutzer.rolle !== 'trainer' && (
-            <a href="#/export" className={props.tab === 'export' ? 'aktiv' : ''}>
-              <span className="icon">⚙️</span>Admin
+        ) : (
+          <>
+            <a href="#/" className={props.tab === 'gruppen' ? 'aktiv' : ''}>
+              <span className="icon">🏑</span>Absenzen für Coaches
             </a>
-          )}
-        </nav>
-      )}
+            {apiAktiv && (
+              <a href="#/meine-kinder" className={props.tab === 'meine-kinder' ? 'aktiv' : ''}>
+                <span className="icon">👪</span>Absenzentool
+              </a>
+            )}
+            <a href="#/personen" className={props.tab === 'personen' ? 'aktiv' : ''}>
+              <span className="icon">👥</span>Personen
+            </a>
+            {benutzer.rolle !== 'trainer' && (
+              <a href="#/export" className={props.tab === 'export' ? 'aktiv' : ''}>
+                <span className="icon">⚙️</span>Admin
+              </a>
+            )}
+          </>
+        )}
+      </nav>
     </div>
   )
 }

@@ -127,7 +127,7 @@ export function MeineKinder() {
   if (!kinder || !termine) return <div className="app" style={{ paddingTop: '25vh', textAlign: 'center', color: 'var(--muted)' }}>Lädt …</div>
 
   return (
-    <Seite titel="Meine Kinder">
+    <Seite titel="Meine Kinder" tab="meine-kinder">
       {kinder.length === 0 && (
         <div className="leer">Keine Person mit dieser E-Mail-Adresse gefunden. Ist die richtige Adresse beim Verein hinterlegt?</div>
       )}
