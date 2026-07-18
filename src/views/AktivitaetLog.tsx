@@ -12,6 +12,7 @@ const AKTION_LABEL: Record<string, string> = {
   foto_hochgeladen: 'Foto hochgeladen',
   teamfoto_hochgeladen: 'Teamfoto hochgeladen',
   mitglied_geaendert: 'Mitglied/Funktion geändert',
+  trainer_auto_freigeschaltet: 'Trainer automatisch freigeschaltet',
 }
 
 function chDatumZeit(iso: string): string {
