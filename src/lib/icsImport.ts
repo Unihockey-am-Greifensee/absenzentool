@@ -196,14 +196,23 @@ export function verwaisteTermine(gruppe: Gruppe, gesehenUids: Set<string>, abDat
     a.icalUid && a.status !== 'abgesagt' && a.datum >= abDatum && !gesehenUids.has(a.icalUid))
 }
 
+// Feed-Anbieter, die keine CORS-Freigabe liefern — nur diese werden über den Proxy geleitet.
+// Muss mit ERLAUBTE_PREFIXE im Cloudflare Worker (cloudflare-worker/ical-proxy.js)
+// übereinstimmen, sonst lehnt der Worker den Request ab.
+const KEIN_CORS: { url: string; devPfad: string }[] = [
+  { url: 'https://calendar.google.com/', devPfad: '/gcal' },
+  { url: 'https://admin.kirche-wigarten.ch/', devPfad: '/kirche-wigarten-ical' },
+]
+
 /**
- * Google Calendar liefert keine CORS-Freigabe — ein Browser kann die Feeds nicht direkt
+ * Manche Feed-Anbieter liefern keine CORS-Freigabe — ein Browser kann die Feeds nicht direkt
  * per fetch() laden. Im Dev-Modus übernimmt das der Vite-Proxy (vite.config.ts), in
  * Produktion (falls konfiguriert) der Cloudflare Worker aus cloudflare-worker/.
  */
 export function fetchUrl(url: string): string {
-  if (!url.startsWith('https://calendar.google.com/')) return url
-  if (import.meta.env?.DEV) return url.replace('https://calendar.google.com', '/gcal')
+  const treffer = KEIN_CORS.find(k => url.startsWith(k.url))
+  if (!treffer) return url
+  if (import.meta.env?.DEV) return url.replace(treffer.url, `${treffer.devPfad}/`)
   if (ICAL_PROXY_URL) return `${ICAL_PROXY_URL}?url=${encodeURIComponent(url)}`
   return url
 }

@@ -1,10 +1,11 @@
 # iCal-CORS-Proxy (Cloudflare Worker)
 
-Google Calendar schickt für seine `.ics`-Feeds keine CORS-Freigabe — ein Browser darf sie
-also nicht per `fetch()` laden, nur per direkter Navigation. Damit der «Jetzt
-synchronisieren»-Knopf auch auf der Live-Seite funktioniert (nicht nur lokal über den
-Vite-Dev-Proxy), läuft ein winziger Cloudflare Worker dazwischen, der nur diese Google-
-Calendar-Feeds durchreicht und dabei die nötigen CORS-Header ergänzt.
+Die Kalender-Quellen (Google Calendar, die Kalender-Verwaltung von admin.kirche-wigarten.ch)
+schicken für ihre `.ics`-Feeds keine CORS-Freigabe — ein Browser darf sie also nicht per
+`fetch()` laden, nur per direkter Navigation. Damit der «Jetzt synchronisieren»-Knopf auch
+auf der Live-Seite funktioniert (nicht nur lokal über den Vite-Dev-Proxy), läuft ein winziger
+Cloudflare Worker dazwischen, der nur diese fest erlaubten Feed-Anbieter durchreicht und dabei
+die nötigen CORS-Header ergänzt.
 
 ## Einmaliges Deployment
 
@@ -17,7 +18,9 @@ Calendar-Feeds durchreicht und dabei die nötigen CORS-Header ergänzt.
 
 ## Warum kein Sicherheitsrisiko
 
-Der Worker leitet ausschliesslich Anfragen an `calendar.google.com/calendar/ical/…` weiter —
-alles andere lehnt er mit HTTP 400 ab. Es werden keine Zugangsdaten oder Cookies durchgereicht,
-nur öffentlich abonnierbare Kalenderdaten (dieselben, die auch die App-Nutzer sonst im Browser
-direkt aufrufen könnten).
+Der Worker leitet ausschliesslich Anfragen an die in `ERLAUBTE_PREFIXE` (in `ical-proxy.js`)
+gelisteten URL-Präfixe weiter — alles andere lehnt er mit HTTP 400 ab. Aktuell:
+`calendar.google.com/calendar/ical/…` und `admin.kirche-wigarten.ch/ical/…`. Es werden keine
+Zugangsdaten oder Cookies durchgereicht, nur öffentlich abonnierbare Kalenderdaten (dieselben,
+die auch die App-Nutzer sonst im Browser direkt aufrufen könnten). Bei einem neuen Feed-
+Anbieter dort einfach einen weiteren Prefix ergänzen.
