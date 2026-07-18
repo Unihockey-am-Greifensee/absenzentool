@@ -309,3 +309,22 @@ export async function kursSetzen(personId: string, kurs: Kurs, datum: string): P
 export async function kursEntfernen(personId: string, kurs: Kurs): Promise<void> {
   await apiFetch(`/api/kurse/${personId}/${kurs}`, { method: 'DELETE' }).then(pruefen)
 }
+
+// --- Admin-Übersicht: Aktivitäts-Log (Logins + wichtigste Änderungen) ---
+
+export interface LogEintrag {
+  id: number
+  zeitpunkt: string
+  email: string
+  typ: 'trainer' | 'familie'
+  aktion: string
+  personId?: string
+  personName?: string
+  beschreibung?: string
+}
+
+export async function aktivitaetLogLaden(personId?: string): Promise<LogEintrag[]> {
+  const query = personId ? `?personId=${encodeURIComponent(personId)}` : ''
+  const res = await apiFetch(`/api/aktivitaet-log${query}`).then(pruefen)
+  return res.json()
+}

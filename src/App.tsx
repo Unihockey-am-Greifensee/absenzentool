@@ -23,6 +23,7 @@ import { Halbjahresabschluss } from './views/Halbjahresabschluss'
 import { MeineKinder, MeineKinderTermine } from './views/MeineKinder'
 import { PersonenFamilie } from './views/PersonenFamilie'
 import { FamilieZugriffe } from './views/FamilieZugriffe'
+import { AktivitaetLog } from './views/AktivitaetLog'
 
 export type Update = (fn: (s: AppState) => AppState) => void
 
@@ -83,6 +84,7 @@ function Router({ state, update }: { state: AppState; update: Update }) {
   if (seg[0] === 'nds-export' && istMaster) return <ExportView state={state} />
   if (seg[0] === 'trainer' && benutzer.rolle === 'master') return <TrainerAdmin eigeneEmail={benutzer.email!} />
   if (seg[0] === 'familie-zugriffe' && benutzer.rolle === 'master') return <FamilieZugriffe />
+  if (seg[0] === 'aktivitaet-log' && benutzer.rolle === 'master') return <AktivitaetLog />
   if (seg[0] === 'backup' && istMaster) return <BackupView state={state} update={update} />
   if (seg[0] === 'gruppen-verwalten' && istMaster) return <GruppenVerwaltung state={state} update={update} />
   if (seg[0] === 'halbjahresabschluss' && istMaster) return <Halbjahresabschluss state={state} update={update} />
