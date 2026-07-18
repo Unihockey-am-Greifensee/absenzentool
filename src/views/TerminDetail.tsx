@@ -146,6 +146,23 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
         </>
       )}
 
+      {!termin.archiviert && (
+        <details className="aufklapp">
+          <summary>Anmeldefrist für diesen Termin überschreiben</summary>
+          <div className="karte">
+            <div className="sub" style={{ padding: '0.5rem 0 0.6rem' }}>
+              Standardmässig gilt die Team-Regel (Gruppe › Abmelde-Frist). Hier kannst du für
+              diesen einen Termin eine genaue Frist setzen, bis zu der Eltern/Spieler:innen sich
+              noch ab-/anmelden können.
+            </div>
+            <label className="feld">Frist (leer = Team-Regel verwenden)
+              <input type="datetime-local" value={termin.fristOverride ?? ''}
+                onChange={e => mutiere(a => { a.fristOverride = e.target.value || undefined })} />
+            </label>
+          </div>
+        </details>
+      )}
+
       {gruppenBox('Coach', coach, 'Kein Coach in dieser Gruppe.')}
       {gruppenBox('Team', team, 'Keine Spieler/-innen in dieser Gruppe.')}
       {gruppenBox('Schnuppernde', schnuppernde, 'Niemand am Schnuppern.')}

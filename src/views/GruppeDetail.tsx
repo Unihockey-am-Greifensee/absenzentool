@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { AppState, Aktivitaet, Aktivitaetstyp, Funktion, Gruppe, Mitglied, MitgliedStatus, Person } from '../types'
+import type { AppState, Aktivitaet, Aktivitaetstyp, FristTraining, FristWettkampf, Funktion, Gruppe, Mitglied, MitgliedStatus, Person } from '../types'
 import { neueId } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
 import { heute } from '../lib/datum'
@@ -493,20 +493,21 @@ function TrainerZuteilung({ state, update, gruppeId }: { state: AppState; update
 }
 
 /**
- * Für die An-/Abmeldefunktion (Eltern/Spieler:innen): überschreibt die globalen
- * Stunden-Fristen (Admin > Fristen) für diese Gruppe mit einer festen Tageszeit — z. B.
- * "13:00" für Herren/U18, unabhängig von der jeweiligen Trainingszeit.
+ * Für die An-/Abmeldefunktion (Eltern/Spieler:innen): pro Team wählbare Frist, getrennt nach
+ * Training und Wettkampf. Einzelne Termine können das zusätzlich mit einer exakten Zeit
+ * überschreiben (siehe TerminDetail.tsx).
  */
 function AbmeldeFrist({ state, update, gruppeId }: { state: AppState; update: Update; gruppeId: string }) {
   const benutzer = useBenutzer()
   const gruppe = state.gruppen.find(g => g.id === gruppeId)!
-  const [uhrzeit, setUhrzeit] = useState(gruppe.abmeldeFristUhrzeit ?? '')
   if (benutzer.rolle !== 'master') return null
 
-  const speichern = (wert: string) =>
+  const setzen = (feld: 'fristTraining' | 'fristWettkampf', wert: string) =>
     update(s => {
       const n = structuredClone(s)
-      n.gruppen.find(g => g.id === gruppeId)!.abmeldeFristUhrzeit = wert || undefined
+      const g = n.gruppen.find(g => g.id === gruppeId)!
+      if (feld === 'fristTraining') g.fristTraining = (wert || undefined) as FristTraining | undefined
+      else g.fristWettkampf = (wert || undefined) as FristWettkampf | undefined
       return n
     })
 
@@ -515,14 +516,20 @@ function AbmeldeFrist({ state, update, gruppeId }: { state: AppState; update: Up
       <summary>Abmelde-Frist (An-/Abmeldefunktion)</summary>
       <div className="karte">
         <div className="sub" style={{ padding: '0.5rem 0 0.6rem' }}>
-          Standardmässig gilt die globale Stunden-Frist (siehe Admin › Fristen). Hier kannst du
-          für diese Gruppe stattdessen eine feste Tageszeit setzen, bis zu der Eltern/Spieler:innen
-          sich für Termine am selben Tag noch abmelden können — unabhängig von der Startzeit.
+          Bis wann sich Eltern/Spieler:innen für Termine dieser Gruppe noch ab-/anmelden können.
         </div>
-        <label className="feld">Feste Frist-Uhrzeit (leer = globale Regel verwenden)
-          <input type="time" value={uhrzeit} onChange={e => setUhrzeit(e.target.value)} />
+        <label className="feld">Training/Trainingstag/Lagertag
+          <select value={gruppe.fristTraining ?? '1h_vorher'} onChange={e => setzen('fristTraining', e.target.value)}>
+            <option value="1h_vorher">1 Stunde vor Beginn</option>
+            <option value="13uhr">Bis 13:00 Uhr (am Trainingstag)</option>
+          </select>
         </label>
-        <button className="sekundaer breit" onClick={() => speichern(uhrzeit)}>Speichern</button>
+        <label className="feld">Wettkampf
+          <select value={gruppe.fristWettkampf ?? '1woche_vorher'} onChange={e => setzen('fristWettkampf', e.target.value)}>
+            <option value="1woche_vorher">1 Woche vor dem Spieltag</option>
+            <option value="1tag_vorher">1 Tag vor dem Spieltag</option>
+          </select>
+        </label>
       </div>
     </details>
   )

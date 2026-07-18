@@ -254,22 +254,6 @@ export async function alleTrainer(): Promise<TrainerKonto[]> {
   return res.json()
 }
 
-// --- Globale Fristen für die An-/Abmeldefunktion (Eltern/Spieler:innen) ---
-
-export interface Fristen {
-  fristStundenTraining: number
-  fristStundenWettkampf: number
-}
-
-export async function fristenLaden(): Promise<Fristen> {
-  const res = await apiFetch('/api/einstellungen').then(pruefen)
-  return res.json()
-}
-
-export async function fristenSpeichern(fristen: Fristen): Promise<void> {
-  await apiFetch('/api/einstellungen', { method: 'PUT', body: JSON.stringify(fristen) }).then(pruefen)
-}
-
 // --- Admin-Übersicht: wer hat die An-/Abmeldefunktion tatsächlich genutzt ---
 
 export interface FamilieZugriff {

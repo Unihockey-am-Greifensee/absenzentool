@@ -5,6 +5,8 @@ import type { AnwesenheitStatus } from './lib/anwesenheit'
 export type Funktion = 'Teilnehmer/in' | 'Leiter/in'
 export type Aktivitaetstyp = 'Training' | 'Trainingstag' | 'Wettkampf' | 'Lagertag'
 export type AktivitaetsStatus = 'geplant' | 'durchgefuehrt' | 'abgesagt'
+export type FristTraining = '1h_vorher' | '13uhr'
+export type FristWettkampf = '1woche_vorher' | '1tag_vorher'
 
 export interface Person {
   id: string
@@ -66,6 +68,9 @@ export interface Aktivitaet {
   // bis er ihn wieder öffnet. Steuert nur die Übersichts-Einteilung, unabhängig von status/NDS-Export.
   archiviert?: boolean // Nur der Admin setzt dies, ausschliesslich über den Halbjahresabschluss.
   // Sperrt die Anwesenheit endgültiger als abgeschlossen — Trainer können das nicht selbst aufheben.
+  // Überschreibt für diesen einen Termin die Team-Regel (Gruppe.fristTraining/fristWettkampf)
+  // mit einer exakten Frist "YYYY-MM-DDTHH:mm" (lokale Zeit, kein datetime-local-Zeitzonen-Handling).
+  fristOverride?: string
 }
 
 export interface Foto {
@@ -101,9 +106,12 @@ export interface Gruppe {
   standardZeit?: string
   standardDauer?: number
   standardOrt?: string
-  // Überschreibt für die An-/Abmeldefunktion die globalen Stunden-Fristen (Einstellung) mit
-  // einer festen Tageszeit (z. B. "13:00") — siehe rudelcheck-server/src/lib/familie.ts.
-  abmeldeFristUhrzeit?: string
+  // Team-Regel für die An-/Abmeldefunktion, getrennt nach Training und Wettkampf — siehe
+  // rudelcheck-server/src/lib/familie.ts (fristBerechnen). undefined = jeweiliger Standard
+  // (fristTraining: '1h_vorher', fristWettkampf: '1woche_vorher'). Einzelne Termine können
+  // das zusätzlich mit Aktivitaet.fristOverride überschreiben.
+  fristTraining?: FristTraining
+  fristWettkampf?: FristWettkampf
 }
 
 export interface AppState {
