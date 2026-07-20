@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { abmelden, googleAnmelden } from '../firebase'
 import {
-  abmelden as apiAbmelden, codeAnfordern, codeBestaetigen, googleButtonRendern,
+  abmelden as apiAbmelden, codeBestaetigen, familieEinstieg, googleButtonRendern,
   meAbrufen, passwortAnmelden, passwortSetzen, type AnmeldeErgebnis,
 } from '../lib/apiAuth'
 import logo from '../assets/grizzlys-logo.png'
@@ -44,10 +44,11 @@ export function NichtFreigeschaltet({ email }: { email: string }) {
 export function ApiLoginView({ auf }: { auf: (ergebnis: AnmeldeErgebnis) => void }) {
   const container = useRef<HTMLDivElement>(null)
   const [fehler, setFehler] = useState<string | null>(null)
-  // 'erstellen': E-Mail -> Code (Datenbank-Abgleich mit einem Kind, siehe routes/auth.ts
-  // code-anfordern) -> Passwort festlegen. 'anmelden': direkt E-Mail + Passwort.
-  const [modus, setModus] = useState<'erstellen' | 'anmelden'>('erstellen')
-  const [schritt, setSchritt] = useState<'email' | 'code' | 'passwort'>('email')
+  // 'email': einziger Einstieg — der Server entscheidet selbst (routes/auth.ts /familie/einstieg),
+  // ob als Nächstes ein Passwort abgefragt (bestehendes Konto) oder ein Code verschickt wird
+  // (neues Konto). 'code'/'passwort-neu' gehören zur Konto-Erstellung, 'passwort-login' zur
+  // Anmeldung mit bestehendem Konto.
+  const [schritt, setSchritt] = useState<'email' | 'code' | 'passwort-neu' | 'passwort-login'>('email')
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [passwort, setPasswort] = useState('')
@@ -62,18 +63,13 @@ export function ApiLoginView({ auf }: { auf: (ergebnis: AnmeldeErgebnis) => void
     }).catch(e => setFehler(String(e)))
   }, [auf])
 
-  const modusWechseln = (neu: 'erstellen' | 'anmelden') => {
-    setModus(neu); setSchritt('email'); setFehler(null)
-    setCode(''); setPasswort(''); setWiederholung('')
-  }
-
-  const codeAnfordernKlick = async () => {
+  const weiterKlick = async () => {
     setLädt(true)
     setFehler(null)
-    const ergebnis = await codeAnfordern(email.trim())
+    const ergebnis = await familieEinstieg(email.trim())
     setLädt(false)
     if (!ergebnis.ok) { setFehler(ergebnis.meldung); return }
-    setSchritt('code')
+    setSchritt(ergebnis.modus === 'passwort' ? 'passwort-login' : 'code')
   }
 
   const codeBestaetigenKlick = async () => {
@@ -84,7 +80,7 @@ export function ApiLoginView({ auf }: { auf: (ergebnis: AnmeldeErgebnis) => void
     const ergebnis = await codeBestaetigen(email.trim(), code.trim())
     setLädt(false)
     if (!ergebnis.ok) { setFehler(ergebnis.meldung); return }
-    setSchritt('passwort')
+    setSchritt('passwort-neu')
   }
 
   const passwortFestlegenKlick = async () => {
@@ -108,6 +104,8 @@ export function ApiLoginView({ auf }: { auf: (ergebnis: AnmeldeErgebnis) => void
     auf({ status: 'ok', info: ergebnis.info })
   }
 
+  const zurueck = () => { setSchritt('email'); setFehler(null); setCode(''); setPasswort(''); setWiederholung('') }
+
   return (
     <div className="app" style={{ paddingTop: '14vh', textAlign: 'center' }}>
       <img src={logo} alt="Grizzlys – Unihockey am Greifensee" style={{ width: '7rem', height: '7rem', margin: '0 auto' }} />
@@ -118,27 +116,19 @@ export function ApiLoginView({ auf }: { auf: (ergebnis: AnmeldeErgebnis) => void
       </p>
       <div ref={container} style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.2rem' }} />
 
-      <div className="sub" style={{ margin: '0.5rem 0' }}>oder mit einem Konto für Eltern/Spieler:innen</div>
-      <div className="btnreihe" style={{ justifyContent: 'center', marginTop: 0 }}>
-        <button className={modus === 'erstellen' ? '' : 'sekundaer'} onClick={() => modusWechseln('erstellen')}>Konto erstellen</button>
-        <button className={modus === 'anmelden' ? '' : 'sekundaer'} onClick={() => modusWechseln('anmelden')}>Anmelden</button>
-      </div>
-      <div className="karte" style={{ maxWidth: '320px', margin: '0.75rem auto 0', textAlign: 'left' }}>
-        {modus === 'erstellen' && schritt === 'email' && (
+      <div className="sub" style={{ margin: '0.5rem 0' }}>oder als Eltern/Spieler:in mit deiner E-Mail-Adresse</div>
+      <div className="karte" style={{ maxWidth: '320px', margin: '0 auto', textAlign: 'left' }}>
+        {schritt === 'email' && (
           <>
-            <div className="sub" style={{ marginBottom: '0.5rem' }}>
-              Wir gleichen die E-Mail-Adresse mit den beim Verein hinterlegten Kindern ab und
-              schicken dir zur Bestätigung einen Code.
-            </div>
             <label className="feld">E-Mail-Adresse
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@beispiel.ch" />
             </label>
-            <button className="breit" disabled={lädt || !/^\S+@\S+\.\S+$/.test(email.trim())} onClick={() => void codeAnfordernKlick()}>
-              Code anfordern
+            <button className="breit" disabled={lädt || !/^\S+@\S+\.\S+$/.test(email.trim())} onClick={() => void weiterKlick()}>
+              Weiter
             </button>
           </>
         )}
-        {modus === 'erstellen' && schritt === 'code' && (
+        {schritt === 'code' && (
           <>
             <div className="sub" style={{ marginBottom: '0.5rem' }}>Code wurde an {email} geschickt.</div>
             <label className="feld">Code
@@ -147,12 +137,12 @@ export function ApiLoginView({ auf }: { auf: (ergebnis: AnmeldeErgebnis) => void
             <button className="breit" disabled={lädt || code.trim().length < 6} onClick={() => void codeBestaetigenKlick()}>
               Bestätigen
             </button>
-            <button className="leise breit" style={{ marginTop: '0.4rem' }} onClick={() => { setSchritt('email'); setCode('') }}>
+            <button className="leise breit" style={{ marginTop: '0.4rem' }} onClick={zurueck}>
               Andere E-Mail-Adresse
             </button>
           </>
         )}
-        {modus === 'erstellen' && schritt === 'passwort' && (
+        {schritt === 'passwort-neu' && (
           <>
             <div className="sub" style={{ marginBottom: '0.5rem' }}>
               E-Mail bestätigt. Jetzt noch ein Passwort für künftige Logins festlegen.
@@ -168,16 +158,17 @@ export function ApiLoginView({ auf }: { auf: (ergebnis: AnmeldeErgebnis) => void
             </button>
           </>
         )}
-        {modus === 'anmelden' && (
+        {schritt === 'passwort-login' && (
           <>
-            <label className="feld">E-Mail-Adresse
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@beispiel.ch" />
-            </label>
+            <div className="sub" style={{ marginBottom: '0.5rem' }}>{email}</div>
             <label className="feld">Passwort
               <input type="password" value={passwort} onChange={e => setPasswort(e.target.value)} />
             </label>
-            <button className="breit" disabled={lädt || !passwort || !/^\S+@\S+\.\S+$/.test(email.trim())} onClick={() => void passwortAnmeldenKlick()}>
+            <button className="breit" disabled={lädt || !passwort} onClick={() => void passwortAnmeldenKlick()}>
               Anmelden
+            </button>
+            <button className="leise breit" style={{ marginTop: '0.4rem' }} onClick={zurueck}>
+              Andere E-Mail-Adresse
             </button>
           </>
         )}

@@ -82,6 +82,20 @@ export async function codeAnfordern(email: string): Promise<{ ok: true } | { ok:
   return { ok: true }
 }
 
+/**
+ * Einziger Einstiegspunkt des Familie-Login: der Server entscheidet anhand der E-Mail selbst,
+ * ob ein Passwort abgefragt wird (bestehendes Konto) oder ein Bestätigungscode verschickt wird
+ * (neues Konto) — kein manueller "Konto erstellen"/"Anmelden"-Umschalter nötig.
+ */
+export async function familieEinstieg(email: string): Promise<{ ok: true; modus: 'passwort' | 'code' } | { ok: false; meldung: string }> {
+  const res = await apiFetch('/auth/familie/einstieg', { method: 'POST', body: JSON.stringify({ email }) })
+  if (!res.ok) {
+    const daten = await res.json().catch(() => ({}))
+    return { ok: false, meldung: daten.fehler ?? `Fehler (HTTP ${res.status})` }
+  }
+  return { ok: true, ...(await res.json()) }
+}
+
 export async function codeBestaetigen(email: string, code: string): Promise<{ ok: true; info: TrainerInfo } | { ok: false; meldung: string }> {
   const res = await apiFetch('/auth/code-bestaetigen', { method: 'POST', body: JSON.stringify({ email, code }) })
   if (!res.ok) {
