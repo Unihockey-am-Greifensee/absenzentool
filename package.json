@@ -7,10 +7,14 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:rudelcheck": "tsc -b && VITE_API_AKTIV=true vite build --base=/",
+    "build:app": "tsc -b && VITE_API_AKTIV=true VITE_API_BASE_URL=https://rudelcheck.grizzlys.club vite build --base=/ --outDir dist-app",
     "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/cli": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/ios": "^8.4.2",
     "firebase": "^12.16.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

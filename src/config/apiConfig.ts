@@ -2,9 +2,12 @@
 // Wird über die Build-Variable VITE_API_AKTIV gesetzt (siehe package.json: "build" = Firebase/
 // GitHub Pages, "build:rudelcheck" = RudelCheck/Novatrend) statt fest im Code, damit nie versehentlich
 // der falsche Modus in den falschen Build gerät. Frontend und Backend laufen auf Novatrend auf
-// derselben Domain, daher bleibt API_BASE_URL_PROD leer (relative Pfade, kein CORS nötig).
+// derselben Domain, daher bleibt API_BASE_URL_PROD normalerweise leer (relative Pfade, kein CORS
+// nötig) — ausser VITE_API_BASE_URL ist gesetzt (siehe "build:app" in package.json): die native
+// Capacitor-App läuft aus einem eigenen Schema (capacitor://localhost), nicht same-origin, und
+// braucht deshalb eine absolute URL zum Server.
 const API_AKTIV_PROD = import.meta.env.VITE_API_AKTIV === 'true'
-const API_BASE_URL_PROD = ''
+const API_BASE_URL_PROD = import.meta.env.VITE_API_BASE_URL ?? ''
 
 // Dev-Server: mit ?api=<url> gegen ein lokales/entferntes Backend testen, ohne diese
 // Datei anzufassen (gleiches Muster wie ?lokal in firebase.ts).

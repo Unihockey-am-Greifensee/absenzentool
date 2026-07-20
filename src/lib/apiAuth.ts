@@ -60,7 +60,9 @@ export async function googleButtonRendern(container: HTMLElement, auf: (ergebnis
 }
 
 export async function meAbrufen(): Promise<TrainerInfo | null> {
-  const res = await apiFetch('/auth/me')
+  // cache: 'no-store' verhindert, dass der Browser nach einem Logout weiterhin eine gecachte
+  // "eingeloggt"-Antwort von vor dem Logout zurückgibt (siehe auch Cache-Control im Backend).
+  const res = await apiFetch('/auth/me', { cache: 'no-store' })
   if (!res.ok) return null
   return res.json()
 }
