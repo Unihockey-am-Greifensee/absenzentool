@@ -3,13 +3,15 @@ import { apiFetch } from '../lib/apiClient'
 import { Seite } from '../App'
 
 // Kontaktliste für Familie-Konten (Eltern/Spieler:innen) — ganzer Verein, aber bewusst nur
-// Name + E-Mail(s), keine Adresse/AHV/Telefon (Datenschutz). Analog zu PersonenListe.tsx,
-// aber gegen die eigene, schmale /api/familie/personen-Route statt AppState.
+// Name, E-Mail(s), Ort und Team-Zugehörigkeit, keine Adresse/AHV/Telefon (Datenschutz). Analog
+// zu PersonenListe.tsx, aber gegen die eigene, schmale /api/familie/personen-Route statt AppState.
 
 interface PersonEmail {
   id: string
   vorname: string
   nachname: string
+  ort?: string
+  gruppen: string[]
   email?: string
   emailMutter?: string
   emailVater?: string
@@ -38,6 +40,9 @@ export function PersonenFamilie() {
           <div key={p.id} className="zeile">
             <div className="haupt">
               <div className="titel">{p.vorname} {p.nachname}</div>
+              <div className="sub">
+                {[p.gruppen.join(', ') || null, p.ort].filter(Boolean).join(' · ') || 'Keinem Team zugeteilt'}
+              </div>
               <div className="sub">
                 {[p.email, p.emailMutter, p.emailVater].filter(Boolean).join(' · ') || 'Keine E-Mail hinterlegt'}
               </div>
