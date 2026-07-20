@@ -396,7 +396,10 @@ function MitgliedZeile({ person, mitglied, foto, pillText, onArchivieren }: {
     <div className="zeile">
       {foto ? <img src={foto} alt="" className="foto-icon" /> : <div className="foto-icon platzhalter" />}
       <div className="haupt">
-        <div className="titel">{person.vorname} {person.nachname}</div>
+        <div className="titel">
+          {person.vorname} {person.nachname}
+          <a className="person-link" href={`#/person/${person.id}`} title="Zur Person">↗</a>
+        </div>
         <div className="sub">{unterzeile}{!person.jsNummer && ' · ⚠ keine J+S-Nr.'}</div>
       </div>
       {pillText && <span className="pill leiter">{pillText}</span>}

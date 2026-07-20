@@ -15,27 +15,42 @@ function chDatumZeit(iso: string): string {
 
 type Recht = 'fotoRecht' | 'kursRecht' | 'nachwuchsVerantwortlich'
 
-/** Eine Box pro Recht statt pro Trainer — so lässt sich das Recht für mehrere Trainer auf
- * einen Blick vergleichen und in einem Schritt anpassen (Mehrfachauswahl möglich). */
+/** Zeigt nur, wer das Recht aktuell hat (als Chip, per ✕ entfernbar) — plus ein Dropdown,
+ * um weitere Trainer hinzuzufügen. Deutlich kompakter als eine Zeile pro Trainer mit Checkbox. */
 function RechteBox({ titel, trainer, feld, aktualisieren }: {
   titel: string
   trainer: TrainerKonto[]
   feld: Recht
   aktualisieren: (t: TrainerKonto, feld: Recht, wert: boolean) => void
 }) {
+  const ausgewaehlt = trainer.filter(t => !!t[feld])
+  const verfuegbar = trainer.filter(t => !t[feld])
+
   return (
     <>
       <h2 className="abschnitt">{titel}</h2>
-      <div className="karte" style={{ padding: '0.2rem 1rem' }}>
-        {trainer.map(t => (
-          <label key={t.email} className="zeile" style={{ cursor: 'pointer' }}>
-            <input type="checkbox" checked={!!t[feld]} onChange={e => aktualisieren(t, feld, e.target.checked)} />
-            <div className="haupt">
-              <div className="titel">{t.name || t.email}</div>
+      <div className="karte">
+        {ausgewaehlt.length === 0
+          ? <div className="sub">Noch niemand zugeteilt.</div>
+          : (
+            <div className="chip-liste">
+              {ausgewaehlt.map(t => (
+                <span key={t.email} className="chip">
+                  {t.name || t.email}
+                  <button type="button" title="Entfernen" onClick={() => aktualisieren(t, feld, false)}>✕</button>
+                </span>
+              ))}
             </div>
-          </label>
-        ))}
-        {trainer.length === 0 && <div className="sub" style={{ padding: '0.6rem 0' }}>Keine Trainer vorhanden.</div>}
+          )}
+        {verfuegbar.length > 0 && (
+          <select value="" style={{ marginTop: '0.4rem' }} onChange={e => {
+            const t = trainer.find(x => x.email === e.target.value)
+            if (t) aktualisieren(t, feld, true)
+          }}>
+            <option value="" disabled>+ Trainer hinzufügen …</option>
+            {verfuegbar.map(t => <option key={t.email} value={t.email}>{t.name || t.email}</option>)}
+          </select>
+        )}
       </div>
     </>
   )
@@ -69,9 +84,13 @@ export function TrainerAdmin({ eigeneEmail }: { eigeneEmail: string }) {
         {liste.map(t => (
           <div key={t.email} className="zeile">
             <div className="haupt">
-              <div className="titel">{t.name || t.email}</div>
-              <div className="sub">{t.email}</div>
-              <div className="sub">{t.letzterLogin ? `Letzter Login: ${chDatumZeit(t.letzterLogin)}` : 'Noch nie eingeloggt'}</div>
+              <div className="titel">
+                {t.name || t.email}
+                {t.personId && <a className="person-link" href={`#/person/${t.personId}`} title="Zur Person">↗</a>}
+              </div>
+              <div className="sub">
+                {t.email} · {t.letzterLogin ? `Login: ${chDatumZeit(t.letzterLogin)}` : 'noch nie eingeloggt'}
+              </div>
             </div>
             {t.rolle === 'master' && <span className="pill leiter">Admin</span>}
             {t.email !== eigeneEmail.toLowerCase() && (

@@ -79,7 +79,10 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
             <div key={m.personId} className="zeile">
               {foto ? <img src={foto.datenUrl} alt="" className="foto-icon" /> : <div className="foto-icon platzhalter" />}
               <div className="haupt">
-                <div className="titel">{p.vorname} {p.nachname}</div>
+                <div className="titel">
+                  {p.vorname} {p.nachname}
+                  <a className="person-link" href={`#/person/${p.id}`} title="Zur Person">↗</a>
+                </div>
                 <div className="sub">{m.rolle ?? m.funktion}</div>
                 {familienMeldung && (
                   <div className="sub" style={{ color: 'var(--accent-ink)', fontWeight: 600 }}

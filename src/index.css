@@ -145,6 +145,20 @@ a.karte { display: block; text-decoration: none; color: inherit; }
 .pill.abgesagt { background: var(--slate-tint); color: var(--muted); text-decoration: line-through; }
 .pill.leiter { background: var(--slate-tint); color: var(--slate-ink); }
 
+.chip-liste { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0; }
+.chip {
+  display: inline-flex; align-items: center; gap: 0.25rem; background: var(--slate-tint); color: var(--ink);
+  border-radius: 999px; padding: 0.3rem 0.35rem 0.3rem 0.75rem; font-size: 0.82rem; font-weight: 600;
+}
+.chip button {
+  background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.85rem; line-height: 1;
+  padding: 0.15rem 0.35rem; border-radius: 50%;
+}
+.chip button:hover { color: var(--ink); background: var(--line); }
+
+.person-link { color: var(--muted); text-decoration: none; margin-left: 0.35rem; font-size: 0.85em; }
+.person-link:hover { color: var(--accent-ink); }
+
 button, .btn {
   font: inherit; font-weight: 700; border: 2px solid var(--accent); border-radius: var(--radius-md);
   padding: 0.65rem 1rem; cursor: pointer; text-decoration: none; text-align: center;

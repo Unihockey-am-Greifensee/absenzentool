@@ -38,6 +38,9 @@ export interface TrainerKonto {
   // Letzter erfolgreicher Google-Login — nur im API-Modus befüllt (rudelcheck-server), nie
   // im Firebase-Modus geschrieben.
   letzterLogin?: string
+  // Die Person, deren eigene E-Mail zu diesem Trainer-Konto passt (für den "Zur Person"-Link) —
+  // nur im API-Modus befüllt.
+  personId?: string
 }
 
 export interface GruppeMeta {
