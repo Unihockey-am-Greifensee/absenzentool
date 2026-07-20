@@ -484,7 +484,7 @@ function TrainerZuteilung({ state, update, gruppeId }: { state: AppState; update
             {trainerListe.filter(t => t.rolle === 'trainer').length === 0
               ? 'Noch keine Trainer registriert.'
               : 'Alle registrierten Trainer sind bereits zugeteilt.'}
-            {' '}Neue Konten schaltest du in der <a href="#/trainer">Trainer-Verwaltung</a> frei.
+            {' '}Neue Konten schaltest du in der <a href="#/trainer">User-Verwaltung</a> frei.
           </div>
         )}
       </div>

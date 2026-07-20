@@ -35,6 +35,9 @@ export interface TrainerKonto {
   fotoRecht?: boolean
   kursRecht?: boolean
   nachwuchsVerantwortlich?: boolean
+  // Letzter erfolgreicher Google-Login — nur im API-Modus befüllt (rudelcheck-server), nie
+  // im Firebase-Modus geschrieben.
+  letzterLogin?: string
 }
 
 export interface GruppeMeta {
