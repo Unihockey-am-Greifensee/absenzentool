@@ -54,6 +54,7 @@ export function AktivitaetLog() {
               <div className="titel">
                 {AKTION_LABEL[e.aktion] ?? e.aktion}
                 {e.personName && <> — {e.personName}</>}
+                {e.personId && <a className="person-link" href={`#/person/${e.personId}`} title="Zur Person">↗</a>}
               </div>
               <div className="sub">
                 {chDatumZeit(e.zeitpunkt)} · {e.email} ({e.typ === 'trainer' ? 'Trainer' : 'Familie'})

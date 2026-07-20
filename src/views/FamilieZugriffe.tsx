@@ -31,7 +31,13 @@ export function FamilieZugriffe() {
               <div className="sub">
                 {z.kinder.length === 0
                   ? 'Passt aktuell zu keiner Person mehr'
-                  : z.kinder.map(k => `${k.vorname} ${k.nachname}`).join(', ')}
+                  : z.kinder.map((k, i) => (
+                    <span key={k.id}>
+                      {i > 0 && ', '}
+                      {k.vorname} {k.nachname}
+                      <a className="person-link" href={`#/person/${k.id}`} title="Zur Person">↗</a>
+                    </span>
+                  ))}
               </div>
               <div className="sub">
                 Letzter Login: {chDatumZeit(z.letzterLogin)} · {z.anzahlLogins}× insgesamt seit {chDatumZeit(z.ersterLogin)}
