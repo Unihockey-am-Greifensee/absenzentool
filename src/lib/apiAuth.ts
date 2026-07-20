@@ -90,3 +90,23 @@ export async function codeBestaetigen(email: string, code: string): Promise<{ ok
   }
   return { ok: true, info: await res.json() }
 }
+
+/** Alternative zum Code: dauerhaftes Passwort-Konto, falls die Familie eins angelegt hat. */
+export async function passwortAnmelden(email: string, passwort: string): Promise<{ ok: true; info: TrainerInfo } | { ok: false; meldung: string }> {
+  const res = await apiFetch('/auth/familie/login-passwort', { method: 'POST', body: JSON.stringify({ email, passwort }) })
+  if (!res.ok) {
+    const daten = await res.json().catch(() => ({}))
+    return { ok: false, meldung: daten.fehler ?? `Fehler (HTTP ${res.status})` }
+  }
+  return { ok: true, info: await res.json() }
+}
+
+/** Setzt/ändert das Passwort-Konto der aktuell eingeloggten Familie-Session. */
+export async function passwortSetzen(passwort: string): Promise<{ ok: true } | { ok: false; meldung: string }> {
+  const res = await apiFetch('/auth/familie/passwort-setzen', { method: 'POST', body: JSON.stringify({ passwort }) })
+  if (!res.ok) {
+    const daten = await res.json().catch(() => ({}))
+    return { ok: false, meldung: daten.fehler ?? `Fehler (HTTP ${res.status})` }
+  }
+  return { ok: true }
+}

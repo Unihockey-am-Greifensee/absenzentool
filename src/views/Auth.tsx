@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { abmelden, googleAnmelden } from '../firebase'
-import { abmelden as apiAbmelden, codeAnfordern, codeBestaetigen, googleButtonRendern, type AnmeldeErgebnis } from '../lib/apiAuth'
+import { abmelden as apiAbmelden, codeAnfordern, codeBestaetigen, googleButtonRendern, passwortAnmelden, type AnmeldeErgebnis } from '../lib/apiAuth'
 import logo from '../assets/grizzlys-logo.png'
 
 export function LoginView() {
@@ -41,9 +41,10 @@ export function NichtFreigeschaltet({ email }: { email: string }) {
 export function ApiLoginView({ auf }: { auf: (ergebnis: AnmeldeErgebnis) => void }) {
   const container = useRef<HTMLDivElement>(null)
   const [fehler, setFehler] = useState<string | null>(null)
-  const [schritt, setSchritt] = useState<'email' | 'code'>('email')
+  const [schritt, setSchritt] = useState<'email' | 'code' | 'passwort'>('email')
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
+  const [passwort, setPasswort] = useState('')
   const [lädt, setLädt] = useState(false)
 
   useEffect(() => {
@@ -72,6 +73,15 @@ export function ApiLoginView({ auf }: { auf: (ergebnis: AnmeldeErgebnis) => void
     auf({ status: 'ok', info: ergebnis.info })
   }
 
+  const passwortAnmeldenKlick = async () => {
+    setLädt(true)
+    setFehler(null)
+    const ergebnis = await passwortAnmelden(email.trim(), passwort)
+    setLädt(false)
+    if (!ergebnis.ok) { setFehler(ergebnis.meldung); return }
+    auf({ status: 'ok', info: ergebnis.info })
+  }
+
   return (
     <div className="app" style={{ paddingTop: '14vh', textAlign: 'center' }}>
       <img src={logo} alt="Grizzlys – Unihockey am Greifensee" style={{ width: '7rem', height: '7rem', margin: '0 auto' }} />
@@ -84,7 +94,7 @@ export function ApiLoginView({ auf }: { auf: (ergebnis: AnmeldeErgebnis) => void
 
       <div className="sub" style={{ margin: '0.5rem 0' }}>oder mit E-Mail-Code (für Eltern/Spieler:innen)</div>
       <div className="karte" style={{ maxWidth: '320px', margin: '0 auto', textAlign: 'left' }}>
-        {schritt === 'email' ? (
+        {schritt === 'email' && (
           <>
             <label className="feld">E-Mail-Adresse
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@beispiel.ch" />
@@ -92,8 +102,12 @@ export function ApiLoginView({ auf }: { auf: (ergebnis: AnmeldeErgebnis) => void
             <button className="breit" disabled={lädt || !/^\S+@\S+\.\S+$/.test(email.trim())} onClick={() => void codeAnfordernKlick()}>
               Code anfordern
             </button>
+            <button className="leise breit" style={{ marginTop: '0.4rem' }} onClick={() => setSchritt('passwort')}>
+              Ich habe ein Passwort
+            </button>
           </>
-        ) : (
+        )}
+        {schritt === 'code' && (
           <>
             <div className="sub" style={{ marginBottom: '0.5rem' }}>Code wurde an {email} geschickt.</div>
             <label className="feld">Code
@@ -104,6 +118,22 @@ export function ApiLoginView({ auf }: { auf: (ergebnis: AnmeldeErgebnis) => void
             </button>
             <button className="leise breit" style={{ marginTop: '0.4rem' }} onClick={() => { setSchritt('email'); setCode('') }}>
               Andere E-Mail-Adresse
+            </button>
+          </>
+        )}
+        {schritt === 'passwort' && (
+          <>
+            <label className="feld">E-Mail-Adresse
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@beispiel.ch" />
+            </label>
+            <label className="feld">Passwort
+              <input type="password" value={passwort} onChange={e => setPasswort(e.target.value)} />
+            </label>
+            <button className="breit" disabled={lädt || !passwort || !/^\S+@\S+\.\S+$/.test(email.trim())} onClick={() => void passwortAnmeldenKlick()}>
+              Anmelden
+            </button>
+            <button className="leise breit" style={{ marginTop: '0.4rem' }} onClick={() => { setSchritt('email'); setPasswort('') }}>
+              Zurück zum Code-Login
             </button>
           </>
         )}

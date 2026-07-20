@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../lib/apiClient'
+import { passwortSetzen } from '../lib/apiAuth'
 import { Seite } from '../App'
 
 // An-/Abmeldefunktion für Eltern/Spieler:innen — läuft im normalen App-Shell (Seite), nicht
@@ -177,6 +178,50 @@ function KindSektion({ kind, termine, gesamtAnzahl, aktualisieren }: {
   )
 }
 
+/** Optionales Passwort-Konto, damit künftige Logins nicht jedes Mal einen neuen Code per Mail brauchen. */
+function PasswortSektion() {
+  const [passwort, setPasswort] = useState('')
+  const [wiederholung, setWiederholung] = useState('')
+  const [lädt, setLädt] = useState(false)
+  const [fehler, setFehler] = useState<string | null>(null)
+  const [gespeichert, setGespeichert] = useState(false)
+
+  const speichern = async () => {
+    setFehler(null)
+    if (passwort.length < 8) { setFehler('Mindestens 8 Zeichen.'); return }
+    if (passwort !== wiederholung) { setFehler('Die beiden Passwörter stimmen nicht überein.'); return }
+    setLädt(true)
+    const ergebnis = await passwortSetzen(passwort)
+    setLädt(false)
+    if (!ergebnis.ok) { setFehler(ergebnis.meldung); return }
+    setPasswort(''); setWiederholung('')
+    setGespeichert(true)
+    setTimeout(() => setGespeichert(false), 2500)
+  }
+
+  return (
+    <details className="aufklapp" style={{ marginTop: '1rem' }}>
+      <summary>Login-Passwort festlegen</summary>
+      <div className="karte">
+        <div className="sub" style={{ padding: '0.5rem 0 0.6rem' }}>
+          Damit kannst du dich künftig direkt mit E-Mail + Passwort anmelden, ohne jedes Mal
+          einen neuen Code per Mail abzuwarten.
+        </div>
+        <label className="feld">Neues Passwort (mind. 8 Zeichen)
+          <input type="password" value={passwort} onChange={e => setPasswort(e.target.value)} />
+        </label>
+        <label className="feld">Passwort wiederholen
+          <input type="password" value={wiederholung} onChange={e => setWiederholung(e.target.value)} />
+        </label>
+        <button className="sekundaer breit" disabled={lädt} onClick={() => void speichern()}>
+          {gespeichert ? 'Gespeichert ✓' : 'Speichern'}
+        </button>
+        {fehler && <div className="hinweis fehler" style={{ marginTop: '0.5rem' }}>{fehler}</div>}
+      </div>
+    </details>
+  )
+}
+
 export function MeineKinder() {
   const { kinder, termine, fehler, laden } = useFamilieDaten()
 
@@ -191,6 +236,7 @@ export function MeineKinder() {
       {kinder.map(kind => (
         <KindSektion key={kind.id} kind={kind} termine={termine} gesamtAnzahl={kinder.length} aktualisieren={laden} />
       ))}
+      {kinder.length > 0 && <PasswortSektion />}
     </Seite>
   )
 }
