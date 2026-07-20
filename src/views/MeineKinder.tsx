@@ -27,7 +27,7 @@ interface Termin {
   datum: string
   zeit?: string
   typ: string
-  status?: 'abgemeldet'
+  status: 'angemeldet' | 'abgemeldet' | 'rueckmeldung_fehlt'
   grund?: string
   fristBis: string
   kannBearbeiten: boolean
@@ -105,14 +105,21 @@ function AbmeldenForm({ termin, aufFertig }: { termin: Termin; aufFertig: () => 
 /** Kompakte Zeile im Stil von terminZeile (GruppeDetail.tsx) — klickbar zum Auf-/Zuklappen der Aktion. */
 function TerminZeile({ termin, aktualisieren }: { termin: Termin; aktualisieren: () => void }) {
   const [aufgeklappt, setAufgeklappt] = useState(false)
+  const [zeigtAbmeldenForm, setZeigtAbmeldenForm] = useState(false)
 
-  const wiederAnmelden = async () => {
+  const anmelden = async () => {
     await apiFetch('/api/familie/anwesenheit', {
       method: 'PUT',
-      body: JSON.stringify({ personId: termin.personId, aktivitaetId: termin.aktivitaetId, status: null }),
+      body: JSON.stringify({ personId: termin.personId, aktivitaetId: termin.aktivitaetId, status: 'angemeldet' }),
     })
     aktualisieren()
   }
+
+  const pill = termin.status === 'abgemeldet'
+    ? <span className="pill abgesagt">abgemeldet</span>
+    : termin.status === 'rueckmeldung_fehlt'
+      ? <span className="pill offen">Rückmeldung fehlt</span>
+      : <span className="pill ok">angemeldet</span>
 
   return (
     <div className="zeile" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
@@ -128,19 +135,16 @@ function TerminZeile({ termin, aktualisieren }: { termin: Termin; aktualisieren:
           </div>
           {termin.status === 'abgemeldet' && termin.grund && <div className="sub">Grund: {termin.grund}</div>}
         </div>
-        {termin.status === 'abgemeldet' ? (
-          <span className="pill abgesagt">abgemeldet</span>
-        ) : (
-          <span className="pill ok">angemeldet</span>
-        )}
+        {pill}
       </div>
       {aufgeklappt && termin.kannBearbeiten && (
-        termin.status === 'abgemeldet' ? (
-          <div className="btnreihe" style={{ marginTop: '0.4rem' }}>
-            <button className="sekundaer" onClick={() => void wiederAnmelden()}>Wieder anmelden</button>
-          </div>
+        zeigtAbmeldenForm ? (
+          <AbmeldenForm termin={termin} aufFertig={() => { setZeigtAbmeldenForm(false); setAufgeklappt(false); aktualisieren() }} />
         ) : (
-          <AbmeldenForm termin={termin} aufFertig={() => { setAufgeklappt(false); aktualisieren() }} />
+          <div className="btnreihe" style={{ marginTop: '0.4rem' }}>
+            {termin.status !== 'angemeldet' && <button className="sekundaer" onClick={() => void anmelden()}>Ich komme</button>}
+            {termin.status !== 'abgemeldet' && <button className="leise" onClick={() => setZeigtAbmeldenForm(true)}>Ich kann nicht</button>}
+          </div>
         )
       )}
     </div>

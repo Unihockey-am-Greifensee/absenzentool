@@ -40,6 +40,13 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
     .filter(m => (statusVon(m) === 'archiviert' || !!personById.get(m.personId)?.archiviert) && termin.anwesenheit[m.personId] !== undefined)
     .sort(nachName)
   const zaehlung = zaehleStatus(termin.anwesenheit, aktive.map(m => m.personId))
+  // Nur relevant, wenn das Team für diesen Termin-Typ auf "Rückmeldung fehlt" statt "angemeldet"
+  // steht (siehe GruppeOptionen.tsx) — dann ist ein fehlender Eintrag keine stillschweigende
+  // Zusage, sondern eine offene Rückmeldung.
+  const standard = termin.typ === 'Wettkampf' ? (gruppe.standardWettkampf ?? 'angemeldet') : (gruppe.standardTraining ?? 'angemeldet')
+  const rueckmeldungFehltAnzahl = standard === 'rueckmeldung_fehlt'
+    ? aktive.filter(m => termin.anwesenheit[m.personId] === undefined).length
+    : 0
 
   // Wirkt auf alle Geschwister eines Wettkampf-Tages gleichzeitig (siehe lib/termine.ts) —
   // dadurch reicht EINE Anwesenheitserfassung für z. B. zwei Spiele am selben Tag.
@@ -75,6 +82,7 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
           const foto = neuestesFoto(state.fotos, m.personId)
           const aktuell = anwesenheitStatus(termin.anwesenheit[m.personId])
           const familienMeldung = termin.anwesenheitMeta?.[m.personId]
+          const keineRueckmeldung = standard === 'rueckmeldung_fehlt' && termin.anwesenheit[m.personId] === undefined
           return (
             <div key={m.personId} className="zeile">
               {foto ? <img src={foto.datenUrl} alt="" className="foto-icon" /> : <div className="foto-icon platzhalter" />}
@@ -89,6 +97,9 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
                     title={familienMeldung.grund ? `Grund: ${familienMeldung.grund}` : undefined}>
                     👪 von Familie gemeldet{familienMeldung.grund ? ` · ${familienMeldung.grund}` : ''}
                   </div>
+                )}
+                {keineRueckmeldung && (
+                  <div className="sub" style={{ color: 'var(--accent-ink)', fontWeight: 600 }}>⏳ Rückmeldung fehlt</div>
                 )}
               </div>
               <div className="statusreihe">
@@ -143,6 +154,7 @@ export function TerminDetail({ state, update, gruppeId, terminId }: {
           <div className="hinweis info">
             {zaehlung.anwesend} anwesend · {zaehlung.abgemeldet} abgemeldet · {zaehlung.unabgemeldet} unabgemeldet
             {zaehlung.offen > 0 && ` · ${zaehlung.offen} offen`}
+            {rueckmeldungFehltAnzahl > 0 && ` · ${rueckmeldungFehltAnzahl} Rückmeldung${rueckmeldungFehltAnzahl === 1 ? '' : 'en'} fehlen`}
             {termin.archiviert ? ' — archiviert, nur der Admin kann das aufheben.'
               : termin.abgeschlossen ? ' — abgeschlossen, «Wieder öffnen» zum Bearbeiten.' : ''}
           </div>

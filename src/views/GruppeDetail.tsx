@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import type { AppState, Aktivitaet, Aktivitaetstyp, FristTraining, FristWettkampf, Funktion, Gruppe, Mitglied, MitgliedStatus, Person } from '../types'
+import type { AppState, Aktivitaet, Aktivitaetstyp, Funktion, Gruppe, Mitglied, MitgliedStatus, Person } from '../types'
 import { neueId } from '../types'
 import { Seite, useBenutzer, type Update } from '../App'
 import { heute } from '../lib/datum'
 import { DAUER_TRAINING, DAUER_TRAININGSTAG } from '../lib/ndsExport'
-import { KalenderSektion } from './IcalSync'
-import { useTrainerListe } from '../lib/useTrainerListe'
 import { aktiveMitglieder, hatAnwesenheit, statusVon } from '../lib/mitglieder'
 import { terminGruppen, type TerminGruppe } from '../lib/termine'
 import { istAnwesend } from '../lib/anwesenheit'
@@ -34,9 +32,9 @@ export function GruppeDetail({ state, update, gruppeId }: { state: AppState; upd
     <Seite titel={gruppe.name} zurueck="" tab="gruppen">
       <TeamFotoSektion state={state} update={update} gruppeId={gruppe.id} />
 
-      <KalenderSektion state={state} update={update} gruppeId={gruppe.id} />
-      <TrainerZuteilung state={state} update={update} gruppeId={gruppe.id} />
-      <AbmeldeFrist state={state} update={update} gruppeId={gruppe.id} />
+      <div className="btnreihe" style={{ marginTop: 0 }}>
+        <a className="btn sekundaer breit" href={`#/gruppe/${gruppe.id}/optionen`}>Allgemeine Team-Optionen</a>
+      </div>
 
       <TermineSektionen gruppe={gruppe} />
 
@@ -405,136 +403,6 @@ function MitgliedZeile({ person, mitglied, foto, pillText, onArchivieren }: {
       {pillText && <span className="pill leiter">{pillText}</span>}
       <button className="leise" onClick={onArchivieren}>Archivieren</button>
     </div>
-  )
-}
-
-function TrainerZuteilung({ state, update, gruppeId }: { state: AppState; update: Update; gruppeId: string }) {
-  const benutzer = useBenutzer()
-  const gruppe = state.gruppen.find(g => g.id === gruppeId)!
-  const trainerListe = useTrainerListe()
-  const [auswahl, setAuswahl] = useState('')
-  if (benutzer.rolle !== 'master') return null
-  const emails = gruppe.trainerEmails ?? []
-  const registriert = new Map(trainerListe.map(t => [t.email, t]))
-  const verfuegbar = trainerListe.filter(t => t.rolle === 'trainer' && !emails.includes(t.email))
-
-  const setzen = (liste: string[]) =>
-    update(s => {
-      const n = structuredClone(s)
-      const gr = n.gruppen.find(g => g.id === gruppeId)!
-      gr.trainerEmails = liste
-      // Wird der Hauptverantwortliche selbst entfernt, verliert die Gruppe die Erinnerung —
-      // muss dann neu gesetzt werden statt eine ungültige E-Mail stehen zu lassen.
-      if (gr.hauptverantwortlicherEmail && !liste.includes(gr.hauptverantwortlicherEmail)) {
-        gr.hauptverantwortlicherEmail = undefined
-      }
-      return n
-    })
-
-  const hauptverantwortlichenSetzen = (email: string | undefined) =>
-    update(s => {
-      const n = structuredClone(s)
-      n.gruppen.find(g => g.id === gruppeId)!.hauptverantwortlicherEmail = email
-      return n
-    })
-
-  return (
-    <details className="aufklapp">
-      <summary>Trainer-Zuteilung ({emails.length})</summary>
-      <div className="karte">
-        {emails.length > 0 && (
-          <div className="sub" style={{ padding: '0.5rem 0 0' }}>
-            Hauptverantwortlich für die Absenzen (erhält die Erinnerung bei fehlenden Einträgen):
-          </div>
-        )}
-        {emails.map(e => {
-          const t = registriert.get(e)
-          const istHauptverantwortlich = gruppe.hauptverantwortlicherEmail === e
-          return (
-            <div key={e} className="zeile">
-              <button type="button" className="leise" title="Als hauptverantwortlich markieren"
-                style={{ fontSize: '1.1rem', padding: '0.2rem 0.5rem', flexShrink: 0 }}
-                onClick={() => hauptverantwortlichenSetzen(istHauptverantwortlich ? undefined : e)}>
-                {istHauptverantwortlich ? '★' : '☆'}
-              </button>
-              <div className="haupt">
-                <div className="titel" style={{ fontSize: '0.85rem' }}>{t?.name || e}</div>
-                {t?.name && <div className="sub">{e}</div>}
-              </div>
-              <button className="leise" onClick={() => setzen(emails.filter(x => x !== e))}>✕</button>
-            </div>
-          )
-        })}
-        {emails.length === 0 && <div className="sub">Noch keinem Trainer-Konto zugeteilt.</div>}
-
-        {verfuegbar.length > 0 ? (
-          <>
-            <label className="feld">Trainer zuteilen
-              <select value={auswahl} onChange={e => setAuswahl(e.target.value)}>
-                <option value="">— auswählen —</option>
-                {verfuegbar.map(t => (
-                  <option key={t.email} value={t.email}>{t.name ? `${t.name} (${t.email})` : t.email}</option>
-                ))}
-              </select>
-            </label>
-            <button className="sekundaer breit" disabled={!auswahl} onClick={() => {
-              setzen([...emails, auswahl])
-              setAuswahl('')
-            }}>Zuteilen</button>
-          </>
-        ) : (
-          <div className="sub">
-            {trainerListe.filter(t => t.rolle === 'trainer').length === 0
-              ? 'Noch keine Trainer registriert.'
-              : 'Alle registrierten Trainer sind bereits zugeteilt.'}
-            {' '}Neue Konten schaltest du in der <a href="#/trainer">User-Verwaltung</a> frei.
-          </div>
-        )}
-      </div>
-    </details>
-  )
-}
-
-/**
- * Für die An-/Abmeldefunktion (Eltern/Spieler:innen): pro Team wählbare Frist, getrennt nach
- * Training und Wettkampf. Einzelne Termine können das zusätzlich mit einer exakten Zeit
- * überschreiben (siehe TerminDetail.tsx).
- */
-function AbmeldeFrist({ state, update, gruppeId }: { state: AppState; update: Update; gruppeId: string }) {
-  const benutzer = useBenutzer()
-  const gruppe = state.gruppen.find(g => g.id === gruppeId)!
-  if (benutzer.rolle !== 'master') return null
-
-  const setzen = (feld: 'fristTraining' | 'fristWettkampf', wert: string) =>
-    update(s => {
-      const n = structuredClone(s)
-      const g = n.gruppen.find(g => g.id === gruppeId)!
-      if (feld === 'fristTraining') g.fristTraining = (wert || undefined) as FristTraining | undefined
-      else g.fristWettkampf = (wert || undefined) as FristWettkampf | undefined
-      return n
-    })
-
-  return (
-    <details className="aufklapp">
-      <summary>Abmelde-Frist (An-/Abmeldefunktion)</summary>
-      <div className="karte">
-        <div className="sub" style={{ padding: '0.5rem 0 0.6rem' }}>
-          Bis wann sich Eltern/Spieler:innen für Termine dieser Gruppe noch ab-/anmelden können.
-        </div>
-        <label className="feld">Training/Trainingstag/Lagertag
-          <select value={gruppe.fristTraining ?? '1h_vorher'} onChange={e => setzen('fristTraining', e.target.value)}>
-            <option value="1h_vorher">1 Stunde vor Beginn</option>
-            <option value="13uhr">Bis 13:00 Uhr (am Trainingstag)</option>
-          </select>
-        </label>
-        <label className="feld">Wettkampf
-          <select value={gruppe.fristWettkampf ?? '1woche_vorher'} onChange={e => setzen('fristWettkampf', e.target.value)}>
-            <option value="1woche_vorher">1 Woche vor dem Spieltag</option>
-            <option value="1tag_vorher">1 Tag vor dem Spieltag</option>
-          </select>
-        </label>
-      </div>
-    </details>
   )
 }
 

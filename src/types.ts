@@ -7,6 +7,7 @@ export type Aktivitaetstyp = 'Training' | 'Trainingstag' | 'Wettkampf' | 'Lagert
 export type AktivitaetsStatus = 'geplant' | 'durchgefuehrt' | 'abgesagt'
 export type FristTraining = '1h_vorher' | '13uhr'
 export type FristWettkampf = '1woche_vorher' | '1tag_vorher'
+export type StandardStatus = 'angemeldet' | 'rueckmeldung_fehlt'
 
 export interface Person {
   id: string
@@ -112,6 +113,11 @@ export interface Gruppe {
   // das zusätzlich mit Aktivitaet.fristOverride überschreiben.
   fristTraining?: FristTraining
   fristWettkampf?: FristWettkampf
+  // Standard-Rückmeldestatus für Termine ohne expliziten Familie-Eintrag, getrennt nach
+  // Training und Wettkampf — siehe rudelcheck-server/src/lib/familie.ts (standardStatus).
+  // undefined = 'angemeldet' (bisheriges Verhalten).
+  standardTraining?: StandardStatus
+  standardWettkampf?: StandardStatus
 }
 
 export interface AppState {

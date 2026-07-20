@@ -9,6 +9,7 @@ import { abmelden as apiAbmelden, meAbrufen } from './lib/apiAuth'
 import { apiAktiv } from './config/apiConfig'
 import { GruppenListe } from './views/Gruppen'
 import { GruppeDetail } from './views/GruppeDetail'
+import { GruppeOptionen } from './views/GruppeOptionen'
 import { TerminDetail } from './views/TerminDetail'
 import { TermineListe } from './views/TermineListe'
 import { PersonenListe, PersonEdit, PersonenArchiv } from './views/Personen'
@@ -74,6 +75,7 @@ function Router({ state, update }: { state: AppState; update: Update }) {
   }
   if (seg[0] === 'gruppe' && seg[1] && seg[2] === 'kommend') return <TermineListe state={state} gruppeId={seg[1]} modus="kommend" />
   if (seg[0] === 'gruppe' && seg[1] && seg[2] === 'archiv') return <TermineListe state={state} gruppeId={seg[1]} modus="archiviert" />
+  if (seg[0] === 'gruppe' && seg[1] && seg[2] === 'optionen') return <GruppeOptionen state={state} update={update} gruppeId={seg[1]} />
   if (seg[0] === 'gruppe' && seg[1]) return <GruppeDetail state={state} update={update} gruppeId={seg[1]} />
   if (seg[0] === 'meine-kinder') return <FamilieRouter />
   if (seg[0] === 'personen') return <PersonenListe state={state} />
