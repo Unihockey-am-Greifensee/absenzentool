@@ -163,8 +163,26 @@ export function PersonEdit({ state, update, personId }: { state: AppState; updat
 
   const geschlechtAnzeige = p.geschlecht === 'm' ? 'männlich' : p.geschlecht === 'w' ? 'weiblich' : ''
 
+  // Aktive Team-Zugehörigkeiten auf einen Blick, unabhängig vom gewählten Tab — macht sofort
+  // sichtbar, wo die Person mitmacht, ohne extra auf "Gruppen" wechseln zu müssen.
+  const aktiveGruppen = state.gruppen
+    .map(g => ({ gruppe: g, mitglied: g.mitglieder.find(m => m.personId === personId) }))
+    .filter((x): x is { gruppe: typeof state.gruppen[number]; mitglied: NonNullable<typeof x.mitglied> } =>
+      !!x.mitglied && statusVon(x.mitglied) !== 'archiviert')
+    .sort((a, b) => a.gruppe.name.localeCompare(b.gruppe.name, 'de'))
+
   return (
     <Seite titel={`${p.vorname} ${p.nachname}`} zurueck="personen" tab="personen">
+      {aktiveGruppen.length > 0 && (
+        <div className="btnreihe" style={{ flexWrap: 'wrap', marginTop: 0 }}>
+          {aktiveGruppen.map(({ gruppe, mitglied }) => (
+            <a key={gruppe.id} href={`#/gruppe/${gruppe.id}`}
+              className={'pill ' + (mitglied.funktion === 'Leiter/in' ? 'leiter' : statusVon(mitglied) === 'schnuppernd' ? 'offen' : 'ok')}>
+              {gruppe.name}{mitglied.funktion === 'Leiter/in' ? ' · Coach' : ''}
+            </a>
+          ))}
+        </div>
+      )}
       <div className="btnreihe" style={{ marginTop: 0 }}>
         <button className={tab === 'angaben' ? '' : 'sekundaer'} onClick={() => setTab('angaben')}>Angaben</button>
         <button className={tab === 'gruppen' ? '' : 'sekundaer'} onClick={() => setTab('gruppen')}>Gruppen</button>

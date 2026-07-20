@@ -137,8 +137,8 @@ a.karte { display: block; text-decoration: none; color: inherit; }
 .zeile .haupt .sub { color: var(--muted); font-size: 0.8rem; }
 
 .pill {
-  font-size: 0.66rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 999px;
-  white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em;
+  display: inline-block; font-size: 0.66rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 999px;
+  white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; text-decoration: none;
 }
 .pill.ok { background: var(--forest-tint); color: var(--ink); }
 .pill.offen { background: var(--amber-tint); color: var(--accent-ink); }

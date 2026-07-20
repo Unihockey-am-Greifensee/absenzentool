@@ -15,6 +15,7 @@ interface Kind {
   id: string
   vorname: string
   nachname: string
+  ort?: string
   rolle: 'selbst' | 'mutter' | 'vater'
   gruppen: { id: string; name: string }[]
 }
@@ -159,10 +160,14 @@ function KindSektion({ kind, termine, gesamtAnzahl, aktualisieren }: {
   const ueberschrift = kindUeberschrift(kind, gesamtAnzahl)
   const gezeigt = eigeneTermine.slice(0, ANZAHL_STANDARD)
   const rest = eigeneTermine.length - gezeigt.length
+  const teamsUndOrt = [kind.gruppen.map(g => g.name).join(', ') || null, kind.ort].filter(Boolean).join(' · ')
 
   return (
     <div>
       {ueberschrift && <h2 className="abschnitt">{ueberschrift}</h2>}
+      {teamsUndOrt && (
+        <div className="sub" style={{ margin: ueberschrift ? '-0.5rem 0 0.5rem' : '0 0 0.5rem' }}>{teamsUndOrt}</div>
+      )}
       <div className="karte" style={{ padding: '0.2rem 1rem' }}>
         {gezeigt.length === 0 && <div className="sub" style={{ padding: '0.5rem 0' }}>Keine anstehenden Termine.</div>}
         {gezeigt.map(t => (
