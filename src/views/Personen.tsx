@@ -272,11 +272,14 @@ function PersonGruppen({ state, update, person }: { state: AppState; update: Upd
       return n
     })
 
-  const funktionWechseln = (gruppeId: string, ziel: 'Leiter/in' | 'Teilnehmer/in') =>
+  // Zielwert bewusst erst hier drin (aus dem garantiert aktuellen Stand) berechnen, nicht
+  // im aufrufenden onClick übergeben — sonst würde ein zweiter Klick vor dem nächsten Render
+  // (z.B. bei kurzem Netzwerk-Lag) dieselbe Richtung nochmals berechnen statt umzuschalten.
+  const funktionWechseln = (gruppeId: string) =>
     update(s => {
       const n = structuredClone(s)
-      const g = n.gruppen.find(x => x.id === gruppeId)!
-      g.mitglieder.find(m => m.personId === person.id)!.funktion = ziel
+      const m = n.gruppen.find(x => x.id === gruppeId)!.mitglieder.find(m => m.personId === person.id)!
+      m.funktion = m.funktion === 'Leiter/in' ? 'Teilnehmer/in' : 'Leiter/in'
       return n
     })
 
@@ -302,7 +305,7 @@ function PersonGruppen({ state, update, person }: { state: AppState; update: Upd
             {aktiv && (
               <button className="leise" onClick={e => {
                 e.stopPropagation()
-                funktionWechseln(g.id, mitglied!.funktion === 'Leiter/in' ? 'Teilnehmer/in' : 'Leiter/in')
+                funktionWechseln(g.id)
               }}>
                 {mitglied!.funktion === 'Leiter/in' ? 'Als Coach entfernen' : 'Als Coach hinzufügen'}
               </button>
