@@ -82,7 +82,7 @@ export function TrainerAdmin({ eigeneEmail }: { eigeneEmail: string }) {
       </div>
       <div className="karte" style={{ padding: '0.2rem 1rem' }}>
         {liste.map(t => (
-          <div key={t.email} className="zeile">
+          <div key={t.email} className="zeile kompakt">
             <div className="haupt">
               <div className="titel">
                 {t.name || t.email}
@@ -94,7 +94,7 @@ export function TrainerAdmin({ eigeneEmail }: { eigeneEmail: string }) {
             </div>
             {t.rolle === 'master' && <span className="pill leiter">Admin</span>}
             {t.email !== eigeneEmail.toLowerCase() && (
-              <button className="leise" onClick={() => {
+              <button className="icon-btn" title="Zugriff entziehen" onClick={() => {
                 if (confirm(`${t.email} den Zugriff entziehen?`)) trainerLoeschen(t.email)
               }}>✕</button>
             )}

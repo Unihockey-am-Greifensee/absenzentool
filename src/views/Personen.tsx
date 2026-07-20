@@ -304,7 +304,7 @@ function PersonGruppen({ state, update, person }: { state: AppState; update: Upd
                 e.stopPropagation()
                 funktionWechseln(g.id, mitglied!.funktion === 'Leiter/in' ? 'Teilnehmer/in' : 'Leiter/in')
               }}>
-                {mitglied!.funktion === 'Leiter/in' ? 'Leiter-Status entfernen' : 'Als Coach hinzufügen'}
+                {mitglied!.funktion === 'Leiter/in' ? 'Als Coach entfernen' : 'Als Coach hinzufügen'}
               </button>
             )}
           </div>
